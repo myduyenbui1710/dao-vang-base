@@ -3,8 +3,8 @@ DB.init();
 modeBanner();
 
 const app = document.getElementById('app');
-const TIMED = ['mine', 'topic', 'bet', 'answer', 'reveal'];
-const NEXT = { mine: 'topic', topic: 'bet', bet: 'answer', answer: 'reveal', reveal: 'board' };
+const TIMED = ['ready', 'mine', 'topic', 'bet', 'answer', 'reveal'];
+const NEXT = { ready: 'mine', mine: 'topic', topic: 'bet', bet: 'answer', answer: 'reveal', reveal: 'board' };
 const LAST = QUESTIONS.length - 1;
 
 let room = null, state = null, players = {}, scores = {}, acts = {}, board = null, results = {};
@@ -87,17 +87,17 @@ async function advance() {
   advancing = true;
   try {
     const p = state.phase;
-    if (p === 'lobby') await goPhase('mine', 0);
+    if (p === 'lobby') await goPhase('ready', 0);
     else if (p === 'answer') { await computeReveal(); await goPhase('reveal'); }
-    else if (p === 'board') { if (state.q >= LAST) await goPhase('final'); else await goPhase('mine', state.q + 1); }
+    else if (p === 'board') { if (state.q >= LAST) await goPhase('final'); else await goPhase('ready', state.q + 1); }
     else if (NEXT[p]) await goPhase(NEXT[p]);
   } finally { advancing = false; }
 }
 
 function checkAllAnswered() {
   if (!state || state.phase !== 'answer') return;
-  const pids = Object.keys(players);
-  if (pids.length && pids.every(pid => acts[pid] && acts[pid].ans != null)) advance();
+  // Giữ đủ thời gian trả lời, không kết thúc sớm khi mọi người đã chọn.
+  return;
 }
 
 setInterval(() => {
@@ -189,6 +189,13 @@ function avatarsGrid() {
   return `<div class="ava-grid">${list.map(p => `<div class="ava-chip"><span class="ava">${esc(p.avatar)}</span>${esc(p.name)}</div>`).join('')}</div>`;
 }
 
+function boardData() {
+  const b = board && board.q === state.q ? board : {};
+  const d = b.dist || [];
+  return { top: b.top || [], fails: b.fails || [], heroes: b.heroes || [], correctN: b.correctN || 0, total: b.total || 0,
+    dist: [0, 1, 2, 3].map(i => d[i] || 0) };
+}
+
 function rankArrow(r) {
   const d = (r.prev || r.rank) - r.rank;
   if (d > 0) return `<span class="up">▲${d}</span>`;
@@ -197,6 +204,10 @@ function rankArrow(r) {
 }
 
 function render(soft = false) {
+  try { renderInner(soft); } catch (e) { console.error(e); }
+}
+
+function renderInner(soft = false) {
   if (!state) return;
   const key = state.phase + ':' + state.q;
   if (soft && key === lastRendered && !['lobby', 'board', 'final'].includes(state.phase)) { updateLive(); return; }
@@ -223,11 +234,18 @@ function render(soft = false) {
           <button class="btn btn-gold btn-xl" id="startBtn" ${Object.keys(players).length ? '' : 'disabled'}>Bắt đầu ▶</button>
         </div></div>`;
       break;
+    case 'ready':
+      Sound.play('tense');
+      body = `<div class="phase-big"><p class="sub">Câu ${state.q + 1}/${QUESTIONS.length}${state.q === LAST ? ' · 🌙 ĐÊM VÀNG x2' : ''}</p>
+        <h1>CHUẨN BỊ ĐÀO!</h1><div class="ready-num pop" id="cd"></div>
+        <p class="sub">Cầm điện thoại lên, sẵn sàng bấm thật nhanh ⛏️</p></div>`;
+      break;
     case 'mine':
       Sound.play('mine');
-      body = `<div class="phase-big"><div class="phase-emoji shake-loop">⛏️</div><h1>ĐÀO VÀNG!</h1>
-        <p class="sub">Bấm liên tục vào cục đá trên điện thoại</p>${timerBar()}
-        <div class="live" id="live"></div></div>`;
+      body = `<div class="mine-screen"><div class="mine-head"><div class="mine-pick shake-loop">⛏️</div>
+        <div><h1>ĐÀO VÀNG!</h1><p class="sub">Bấm liên tục vào cục đá trên điện thoại</p></div><div class="cd-num" id="cd"></div></div>
+        ${timerBar()}<div class="mine-total-host">Cả mỏ: 💰 <b id="mineSum">0</b></div>
+        <div class="miners" id="miners"></div><div class="gold-rain">${'<span>💰</span>'.repeat(14)}</div></div>`;
       break;
     case 'topic':
       Sound.play('tense');
@@ -249,7 +267,7 @@ function render(soft = false) {
       break;
     case 'reveal': {
       if (firstTime) Sound.reveal();
-      const b = board && board.q === state.q ? board : { dist: [0, 0, 0, 0], correctN: 0, total: 0 };
+      const b = boardData();
       const max = Math.max(1, ...b.dist);
       body = `<div class="question-screen"><div class="q-text">${esc(Q.q)}</div>
         <div class="opts">${Q.opts.map((o, i) => `<div class="opt opt-${i} ${i === Q.a ? 'is-correct' : 'is-dim'}">
@@ -260,7 +278,7 @@ function render(soft = false) {
     }
     case 'board': {
       Sound.play('board');
-      const b = board || { top: [], fails: [], heroes: [] };
+      const b = boardData();
       if (firstTime) { if (b.fails.length) Sound.allin(); else Sound.fanfare(); }
       body = `<div class="board">
         <h1>Bảng xếp hạng sau câu ${state.q + 1}</h1>
@@ -270,7 +288,7 @@ function render(soft = false) {
           <span class="bk">💰 ${fmt(r.bank)}</span></div>`).join('')}</div>
         ${b.fails.length ? `<div class="shame pop">💀 ALL-IN THẤT BẠI: ${b.fails.map(r => `<b>${esc(r.avatar)} ${esc(r.name)}</b> (−${fmt(r.bet)})`).join(' · ')}</div>` : ''}
         ${b.heroes.length ? `<div class="hero pop">⚡ THẦN TÀI: ${b.heroes.map(r => `<b>${esc(r.avatar)} ${esc(r.name)}</b> (+${fmt(r.gain)})`).join(' · ')}</div>` : ''}
-        <button class="btn btn-gold btn-xl" id="nextBtn">${state.q >= LAST ? 'Xem kết quả cuối 🏆' : 'Câu tiếp ▶'}</button>
+        <button class="btn btn-gold btn-xl" id="nextBtn">${state.q >= LAST ? 'Xem kết quả cuối 🏆' : `Sẵn sàng câu ${state.q + 2} ▶`}</button>
       </div>`;
       break;
     }
@@ -295,15 +313,27 @@ function bindCommon() {
 }
 
 function updateLive() {
+  if (state && state.phase === 'mine') return updateMiners();
   const el = document.getElementById('live'); if (!el || !state) return;
   const n = Object.keys(players).length;
   const list = Object.values(acts);
-  if (state.phase === 'mine') el.innerHTML = `Cả mỏ đã đào được <b>💰 ${fmt(list.reduce((s, a) => s + (a.mined || 0), 0))}</b>`;
+
   if (state.phase === 'bet') {
     const allin = list.filter(a => a.bet === 100).length;
     el.innerHTML = `${list.filter(a => a.bet).length}/${n} đã cược${allin ? ` · <span class="hot">🔥 ${allin} người ALL-IN</span>` : ''}`;
   }
   if (state.phase === 'answer') el.innerHTML = `${list.filter(a => a.ans != null).length}/${n} đã trả lời`;
+}
+
+function updateMiners() {
+  const box = document.getElementById('miners'); if (!box) return;
+  const rows = Object.keys(players).map(pid => ({ ...players[pid], mined: (acts[pid] && acts[pid].mined) || 0 }))
+    .sort((a, b) => b.mined - a.mined);
+  const max = Math.max(1, ...rows.map(r => r.mined));
+  document.getElementById('mineSum').textContent = fmt(rows.reduce((t, r) => t + r.mined, 0));
+  box.innerHTML = rows.slice(0, 8).map(r => `<div class="miner"><span class="ava">${esc(r.avatar)}</span><span class="nm">${esc(r.name)}</span>
+    <span class="mbar"><span style="width:${r.mined / max * 100}%"></span></span><b>${fmt(r.mined)}</b></div>`).join('')
+    + (rows.length > 8 ? `<p class="muted">+${rows.length - 8} thợ mỏ khác đang đào…</p>` : '');
 }
 
 async function renderFinal(firstTime) {

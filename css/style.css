@@ -182,3 +182,37 @@ b { color: var(--gold2); }
   .q-text { font-size: 1.6rem; } .opt { font-size: 1.2rem; }
   .row { grid-template-columns: 50px 40px 40px 1fr auto; font-size: 1.1rem; } .row .gain { display: none; }
 }
+
+/* Chuẩn bị + màn đào trên màn chiếu */
+.ready-num { font-size: 9rem; font-weight: 800; color: var(--gold); line-height: 1; text-shadow: 0 8px 0 #6b4700; }
+.player .ready-num { font-size: 6rem; }
+.mine-screen { max-width: 1100px; margin: 0 auto; position: relative; }
+.mine-head { display: flex; align-items: center; gap: 24px; }
+.mine-head h1 { font-size: 4rem; color: var(--gold); margin: 0; text-shadow: 0 6px 0 #6b4700; }
+.mine-head .cd-num { margin-left: auto; font-size: 5rem; }
+.mine-pick { font-size: 6rem; }
+.mine-total-host { text-align: center; font-size: 2.2rem; margin: 10px 0; }
+.miners { display: grid; gap: 8px; position: relative; z-index: 2; }
+.miner { display: grid; grid-template-columns: 50px 220px 1fr 110px; gap: 12px; align-items: center; background: var(--card); border-radius: 14px; padding: 8px 16px; font-size: 1.4rem; }
+.miner b { text-align: right; }
+.mbar { height: 18px; background: #1a1107; border-radius: 9px; overflow: hidden; }
+.mbar span { display: block; height: 100%; background: linear-gradient(90deg, #ff6a00, var(--gold2)); transition: width .4s; }
+.gold-rain { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+.gold-rain span { position: absolute; top: -60px; font-size: 2.4rem; animation: rain 2.2s linear infinite; opacity: .5; }
+.gold-rain span:nth-child(1) { left: 3%; animation-delay: 0.00s; }
+.gold-rain span:nth-child(2) { left: 10%; animation-delay: 0.37s; }
+.gold-rain span:nth-child(3) { left: 17%; animation-delay: 0.74s; }
+.gold-rain span:nth-child(4) { left: 24%; animation-delay: 1.11s; }
+.gold-rain span:nth-child(5) { left: 31%; animation-delay: 1.48s; }
+.gold-rain span:nth-child(6) { left: 38%; animation-delay: 1.85s; }
+.gold-rain span:nth-child(7) { left: 45%; animation-delay: 0.02s; }
+.gold-rain span:nth-child(8) { left: 52%; animation-delay: 0.39s; }
+.gold-rain span:nth-child(9) { left: 59%; animation-delay: 0.76s; }
+.gold-rain span:nth-child(10) { left: 66%; animation-delay: 1.13s; }
+.gold-rain span:nth-child(11) { left: 73%; animation-delay: 1.50s; }
+.gold-rain span:nth-child(12) { left: 80%; animation-delay: 1.87s; }
+.gold-rain span:nth-child(13) { left: 87%; animation-delay: 0.04s; }
+.gold-rain span:nth-child(14) { left: 94%; animation-delay: 0.41s; }
+@keyframes rain { to { transform: translateY(110vh) rotate(360deg); } }
+@media (max-width: 900px) { .miner { grid-template-columns: 40px 1fr 1fr 70px; font-size: 1rem; } .mine-head h1 { font-size: 2.4rem; } }
+.mine-head, .mine-total-host { position: relative; z-index: 2; }

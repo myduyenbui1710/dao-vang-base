@@ -97,6 +97,10 @@ setInterval(() => {
 }, 120);
 
 async function render(soft = false) {
+  try { await renderInner(soft); } catch (e) { console.error(e); }
+}
+
+async function renderInner(soft = false) {
   if (!state || !me) return;
   const key = state.phase + ':' + state.q;
   const changed = key !== lastKey;
@@ -117,6 +121,11 @@ async function render(soft = false) {
         <h2>Chào ${esc(me.name)}!</h2><p class="muted">Bạn đã vào mỏ. Chờ host bắt đầu nhé.</p>
         <p class="pill-s">👥 ${Object.keys(players).length} thợ mỏ trong phòng</p>
         <p class="muted small">Két khởi đầu: 💰 ${fmt(RULES.START_BANK)}</p></div>`;
+      break;
+    case 'ready':
+      if (changed && navigator.vibrate) navigator.vibrate(150);
+      html = `${topBar()}<div class="p-card center"><p class="muted">Câu ${state.q + 1}/${QUESTIONS.length}${last ? ' · 🌙 Đêm vàng x2' : ''}</p>
+        <h1>Chuẩn bị đào!</h1><div class="ready-num pop" id="cd"></div><div class="ava huge bob">⛏️</div></div>`;
       break;
     case 'mine':
       html = `${topBar()}<div class="p-phase">ĐÀO! <span id="cd"></span>s</div>${timer()}
