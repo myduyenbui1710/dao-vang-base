@@ -10,6 +10,8 @@ const LAST = QUESTIONS.length - 1;
 let room = null, state = null, players = {}, scores = {}, acts = {}, board = null, results = {};
 let unsubs = [], actUnsub = null, advancing = false, lastRendered = '', lastTickSec = -1;
 const R = p => `rooms/${room}/${p}`;
+const isBetQ = (qi = state.q) => !!(state && state.betQs && state.betQs['q' + qi]);
+let minerPrev = {};
 
 function joinUrl() {
   const base = location.href.replace(/host\.html.*$/, '').replace(/[?#].*$/, '');
@@ -34,10 +36,10 @@ async function setup() {
   document.getElementById('newRoom').onclick = async () => {
     Sound.unlock();
     room = String(rand(1000, 9999));
-    const order = [...Array(LAST).keys()].sort(() => Math.random() - 0.5).slice(0, RULES.FORCED_COUNT);
-    const levels = [25, 50, 100].sort(() => Math.random() - 0.5);
-    const forced = {}; order.forEach((qi, i) => { forced[qi] = levels[i % 3]; });
-    await DB.set(`rooms/${room}`, { state: { phase: 'lobby', q: -1, endsAt: 0, forced, createdAt: DB.now() } });
+    // Câu cuối (Đêm vàng) luôn có cược + ngẫu nhiên thêm các câu khác cho đủ BET_COUNT.
+    const picks = [...Array(LAST).keys()].sort(() => Math.random() - 0.5).slice(0, RULES.BET_COUNT - 1);
+    const betQs = { ['q' + LAST]: true }; picks.forEach(qi => { betQs['q' + qi] = true; });
+    await DB.set(`rooms/${room}`, { state: { phase: 'lobby', q: -1, endsAt: 0, betQs, createdAt: DB.now() } });
     localStorage.setItem('daovang_host_room', room);
     start();
   };
@@ -90,14 +92,16 @@ async function advance() {
     if (p === 'lobby') await goPhase('ready', 0);
     else if (p === 'answer') { await computeReveal(); await goPhase('reveal'); }
     else if (p === 'board') { if (state.q >= LAST) await goPhase('final'); else await goPhase('ready', state.q + 1); }
+    else if (p === 'topic') await goPhase(isBetQ() ? 'bet' : 'answer');
     else if (NEXT[p]) await goPhase(NEXT[p]);
   } finally { advancing = false; }
 }
 
 function checkAllAnswered() {
-  if (!state || state.phase !== 'answer') return;
-  // Giữ đủ thời gian trả lời, không kết thúc sớm khi mọi người đã chọn.
-  return;
+  // Trả lời luôn chạy đủ 15s. Riêng bước cược: mọi người đã xác nhận thì mở câu hỏi luôn.
+  if (!state || state.phase !== 'bet') return;
+  const pids = Object.keys(players);
+  if (pids.length && pids.every(pid => acts[pid] && acts[pid].confirmed)) setTimeout(() => { if (state.phase === 'bet') advance(); }, 1500);
 }
 
 setInterval(() => {
@@ -116,7 +120,7 @@ setInterval(() => {
 async function computeReveal() {
   const qi = state.q, Q = QUESTIONS[qi], last = qi === LAST;
   const a = (await DB.get(R(`actions/${qi}`))) || {};
-  const forcedPct = state.forced && state.forced[qi];
+  const betQ = isBetQ(qi);
   const ansDur = RULES.DUR.answer * 1000;
   const dist = [0, 0, 0, 0];
   const rows = Object.keys(players).map(pid => {
@@ -125,14 +129,15 @@ async function computeReveal() {
     const act = a[pid] || {};
     const pocket = clamp(Math.round(act.mined || 0), 0, RULES.MAX_MINE);
     const base = last ? pocket + s.bank : pocket;
-    const pct = forcedPct || act.bet || RULES.DEFAULT_BET;
+    const pct = betQ ? (act.bet || 0) : 0;
     const bet = Math.round(base * pct / 100);
     const answered = act.ans != null;
     if (answered) dist[act.ans]++;
     const correct = answered && act.ans === Q.a;
     const frac = correct ? clamp((state.answerStart + ansDur - (act.t || 0)) / ansDur, 0, 1) : 0;
-    const speed = correct ? Math.round(bet * RULES.SPEED_BONUS * frac) : 0;
-    const gain = correct ? bet * (last ? RULES.LAST_MULT : 1) + speed : -bet;
+    // Có cược: đúng nhận số cược (+thưởng tốc độ), sai mất số cược. Không cược: đúng được thưởng cố định + tốc độ.
+    const speed = correct ? Math.round((bet ? bet * RULES.SPEED_BONUS : RULES.CORRECT_BONUS) * frac) : 0;
+    const gain = bet ? (correct ? bet * (last ? RULES.LAST_MULT : 1) + speed : -bet) : (correct ? RULES.CORRECT_BONUS + speed : 0);
     const bank = Math.max(0, s.bank + pocket + gain);
     const allIn = pct === 100 && bet > 0;
     let title = '';
@@ -173,10 +178,9 @@ async function computeReveal() {
 // ---------- Hiển thị ----------
 function header() {
   const q = state.q;
-  const forced = state.forced && state.forced[q];
   return `<div class="host-top">
     <div class="pill">Phòng <b>${room}</b></div>
-    ${q >= 0 && state.phase !== 'final' ? `<div class="pill">Câu <b>${q + 1}</b>/${QUESTIONS.length}${q === LAST ? ' · <span class="hot">ĐÊM VÀNG x2</span>' : ''}${forced ? ` · <span class="hot">Cược bắt buộc ${forced === 100 ? 'ALL-IN' : forced + '%'}</span>` : ''}</div>` : ''}
+    ${q >= 0 && state.phase !== 'final' ? `<div class="pill">Câu <b>${q + 1}</b>/${QUESTIONS.length}${q === LAST ? ' · <span class="hot">ĐÊM VÀNG x2</span>' : ''}${isBetQ(q) ? ' · <span class="hot">🎲 Câu có cược</span>' : ''}</div>` : ''}
     <div class="pill">👥 ${Object.keys(players).length}</div>
     <button class="pill btn-icon" id="musicBtn">${Sound.musicOn ? '🔊' : '🔇'}</button>
   </div>`;
@@ -186,7 +190,7 @@ const timerBar = () => `<div class="cd-wrap"><div class="cd-bar" id="cdbar"></di
 function avatarsGrid() {
   const list = Object.values(players).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
   if (!list.length) return '<p class="muted">Chưa có ai vào phòng…</p>';
-  return `<div class="ava-grid">${list.map(p => `<div class="ava-chip"><span class="ava">${esc(p.avatar)}</span>${esc(p.name)}</div>`).join('')}</div>`;
+  return `<div class="ava-grid">${list.map(p => `<div class="ava-chip"><span class="ava">${ava(p.avatar)}</span>${esc(p.name)}</div>`).join('')}</div>`;
 }
 
 function boardData() {
@@ -227,8 +231,8 @@ function renderInner(soft = false) {
           <div class="rules-mini">
             <div>⛏️ <b>Đào 5s</b>: bấm liên tục, có lúc trúng cục to x5, có lúc đào phải đá</div>
             <div>👀 <b>Hé chủ đề 3s</b></div>
-            <div>🎲 <b>Cược 5s</b>: 25% · 50% · ALL-IN số vàng vừa đào. Phần không cược vào Két an toàn</div>
-            <div>❓ <b>Trả lời 15s</b>: đúng nhận số cược + thưởng tốc độ, sai mất số cược</div>
+            <div>🎲 <b>${RULES.BET_COUNT} câu có cược</b>: Không cược · 25% · 50% · ALL-IN số vàng vừa đào, bấm Xác nhận</div>
+            <div>❓ <b>Trả lời 15s</b>: có cược thì đúng nhận số cược, sai mất số cược. Không cược thì đúng được +${RULES.CORRECT_BONUS}</div>
             <div>🌙 <b>Câu cuối Đêm vàng</b>: được cược cả Két, thắng x2</div>
           </div>
           <button class="btn btn-gold btn-xl" id="startBtn" ${Object.keys(players).length ? '' : 'disabled'}>Bắt đầu ▶</button>
@@ -242,23 +246,20 @@ function renderInner(soft = false) {
       break;
     case 'mine':
       Sound.play('mine');
-      body = `<div class="mine-screen"><div class="mine-head"><div class="mine-pick shake-loop">⛏️</div>
-        <div><h1>ĐÀO VÀNG!</h1><p class="sub">Bấm liên tục vào cục đá trên điện thoại</p></div><div class="cd-num" id="cd"></div></div>
-        ${timerBar()}<div class="mine-total-host">Cả mỏ: 💰 <b id="mineSum">0</b></div>
-        <div class="miners" id="miners"></div><div class="gold-rain">${'<span>💰</span>'.repeat(14)}</div></div>`;
+      minerPrev = {};
+      body = mineScene();
       break;
     case 'topic':
       Sound.play('tense');
       body = `<div class="phase-big"><p class="sub">Chủ đề câu ${state.q + 1}</p><h1 class="topic pop">${esc(Q.topic)}</h1>${timerBar()}</div>`;
       break;
-    case 'bet': {
-      const f = state.forced && state.forced[state.q];
-      body = `<div class="phase-big"><div class="phase-emoji">🎲</div><h1>ĐẶT CƯỢC!</h1>
-        ${f ? `<p class="forced pop">Câu này cược bắt buộc: <b>${f === 100 ? 'ALL-IN' : f + '%'}</b></p>` : '<p class="sub">25% · 50% · ALL-IN</p>'}
-        ${state.q === LAST ? '<p class="forced">🌙 Đêm vàng: được cược cả Két, thắng x2</p>' : ''}
-        <p class="sub">Chủ đề: <b>${esc(Q.topic)}</b></p>${timerBar()}<div class="live" id="live"></div></div>`;
+    case 'bet':
+      body = `<div class="bet-screen"><div class="bet-head"><div><h1>🎲 ĐẶT CƯỢC</h1>
+        <p class="sub">Chủ đề: <b>${esc(Q.topic)}</b>${state.q === LAST ? ' · <span class="hot">🌙 Đêm vàng: cược cả Két, thắng x2</span>' : ''}</p></div>
+        <div class="cd-num" id="cd"></div></div>${timerBar()}
+        <div class="bet-summary" id="betSum"></div><div class="bet-list" id="betList"></div>
+        <button class="btn btn-gold" id="openQ">Mở câu hỏi ▶</button></div>`;
       break;
-    }
     case 'answer':
       lastTickSec = -1;
       body = `<div class="question-screen"><div class="q-text">${esc(Q.q)}</div>${timerBar()}
@@ -283,11 +284,11 @@ function renderInner(soft = false) {
       body = `<div class="board">
         <h1>Bảng xếp hạng sau câu ${state.q + 1}</h1>
         <div class="top5">${b.top.map((r, i) => `<div class="row slide-in" style="animation-delay:${i * 0.12}s">
-          <span class="rk">#${r.rank}</span>${rankArrow(r)}<span class="ava">${esc(r.avatar)}</span>
+          <span class="rk">#${r.rank}</span>${rankArrow(r)}<span class="ava">${ava(r.avatar)}</span>
           <span class="nm">${esc(r.name)}</span><span class="gain ${r.gain >= 0 ? 'pos' : 'neg'}">${r.gain >= 0 ? '+' : ''}${fmt(r.gain)}</span>
           <span class="bk">💰 ${fmt(r.bank)}</span></div>`).join('')}</div>
-        ${b.fails.length ? `<div class="shame pop">💀 ALL-IN THẤT BẠI: ${b.fails.map(r => `<b>${esc(r.avatar)} ${esc(r.name)}</b> (−${fmt(r.bet)})`).join(' · ')}</div>` : ''}
-        ${b.heroes.length ? `<div class="hero pop">⚡ THẦN TÀI: ${b.heroes.map(r => `<b>${esc(r.avatar)} ${esc(r.name)}</b> (+${fmt(r.gain)})`).join(' · ')}</div>` : ''}
+        ${b.fails.length ? `<div class="shame pop">💀 ALL-IN THẤT BẠI: ${b.fails.map(r => `<b>${ava(r.avatar)} ${esc(r.name)}</b> (−${fmt(r.bet)})`).join(' · ')}</div>` : ''}
+        ${b.heroes.length ? `<div class="hero pop">⚡ THẦN TÀI: ${b.heroes.map(r => `<b>${ava(r.avatar)} ${esc(r.name)}</b> (+${fmt(r.gain)})`).join(' · ')}</div>` : ''}
         <button class="btn btn-gold btn-xl" id="nextBtn">${state.q >= LAST ? 'Xem kết quả cuối 🏆' : `Sẵn sàng câu ${state.q + 2} ▶`}</button>
       </div>`;
       break;
@@ -296,7 +297,7 @@ function renderInner(soft = false) {
       renderFinal(firstTime);
       return;
   }
-  app.innerHTML = header() + body;
+  app.innerHTML = (state.phase === 'mine' ? '' : header()) + body;
   bindCommon();
   if (state.phase === 'lobby') {
     const qr = document.getElementById('qr');
@@ -304,6 +305,7 @@ function renderInner(soft = false) {
     const sb = document.getElementById('startBtn'); if (sb) sb.onclick = () => { Sound.unlock(); advance(); };
   }
   const nb = document.getElementById('nextBtn'); if (nb) nb.onclick = () => advance();
+  const oq = document.getElementById('openQ'); if (oq) oq.onclick = () => advance();
   updateLive();
 }
 
@@ -314,26 +316,108 @@ function bindCommon() {
 
 function updateLive() {
   if (state && state.phase === 'mine') return updateMiners();
+  if (state && state.phase === 'bet') return updateBets();
   const el = document.getElementById('live'); if (!el || !state) return;
   const n = Object.keys(players).length;
   const list = Object.values(acts);
 
-  if (state.phase === 'bet') {
-    const allin = list.filter(a => a.bet === 100).length;
-    el.innerHTML = `${list.filter(a => a.bet).length}/${n} đã cược${allin ? ` · <span class="hot">🔥 ${allin} người ALL-IN</span>` : ''}`;
-  }
   if (state.phase === 'answer') el.innerHTML = `${list.filter(a => a.ans != null).length}/${n} đã trả lời`;
 }
 
+// ---------- Màn mỏ vàng toàn màn hình ----------
+function minerSlots(n) {
+  const cols = Math.max(1, Math.min(8, Math.ceil(Math.sqrt(n * 2))));
+  const rows = Math.ceil(n / cols);
+  return [...Array(n)].map((_, i) => {
+    const r = Math.floor(i / cols), c = i % cols;
+    const inRow = Math.min(cols, n - r * cols);
+    const x = 8 + (c + 0.5) * (84 / inRow) + (r % 2 ? 2 : -2);
+    const y = 30 + (rows === 1 ? 30 : r * (52 / Math.max(1, rows - 1)));
+    return { x, y };
+  });
+}
+
+function mineScene() {
+  const list = Object.keys(players).map(pid => ({ pid, ...players[pid] }))
+    .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+  const slots = minerSlots(list.length);
+  const scale = list.length > 24 ? 0.7 : list.length > 12 ? 0.85 : 1;
+  // Trang trí cố định theo số thứ tự để mỗi lần hiển thị giống nhau
+  const decor = [...Array(26)].map((_, i) => {
+    const x = (i * 37 + 11) % 96, y = 24 + ((i * 53) % 72), k = i % 9;
+    const cls = k === 0 ? 'gem' : k < 3 ? 'stone' : 'nug';
+    const sz = cls === 'nug' ? 26 + (i * 13) % 40 : 22 + (i * 7) % 18;
+    return `<span class="${cls}" style="left:${x}%;top:${y}%;width:${sz}px;height:${sz * 0.8}px"></span>`;
+  }).join('');
+  return `<div class="mine-scene" style="--s:${scale}">
+    <div class="scene-sky"><div class="scene-hud">
+      <div class="hud-box">Câu <b>${state.q + 1}</b>/${QUESTIONS.length}${isBetQ() ? ' · 🎲' : ''}</div>
+      <div class="hud-title">⛏️ ĐÀO VÀNG!</div>
+      <div class="hud-box">⏱ <b id="cd"></b>s &nbsp; 💰 <b id="mineSum">0</b></div>
+    </div><div class="scene-bar"><div class="cd-bar" id="cdbar"></div></div></div>
+    <div class="scene-ground">${decor}</div>
+    <div class="scene-miners">${list.map((p, i) => `<div class="sm" id="sm-${p.pid}" style="left:${slots[i].x}%;top:${slots[i].y}%">
+      <div class="sm-fx"></div><div class="sm-crown">👑</div>
+      <div class="sm-body">${/^m\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>
+      <div class="sm-pile"></div>
+      <div class="sm-tag"><span class="sm-name">${esc(p.name)}</span><span class="sm-gold">0</span></div></div>`).join('')}</div>
+  </div>`;
+}
+
+let lastCoinSfx = 0;
 function updateMiners() {
-  const box = document.getElementById('miners'); if (!box) return;
-  const rows = Object.keys(players).map(pid => ({ ...players[pid], mined: (acts[pid] && acts[pid].mined) || 0 }))
-    .sort((a, b) => b.mined - a.mined);
-  const max = Math.max(1, ...rows.map(r => r.mined));
-  document.getElementById('mineSum').textContent = fmt(rows.reduce((t, r) => t + r.mined, 0));
-  box.innerHTML = rows.slice(0, 8).map(r => `<div class="miner"><span class="ava">${esc(r.avatar)}</span><span class="nm">${esc(r.name)}</span>
-    <span class="mbar"><span style="width:${r.mined / max * 100}%"></span></span><b>${fmt(r.mined)}</b></div>`).join('')
-    + (rows.length > 8 ? `<p class="muted">+${rows.length - 8} thợ mỏ khác đang đào…</p>` : '');
+  let sum = 0, leader = null, best = 0;
+  Object.keys(players).forEach(pid => {
+    const a = acts[pid] || {}, mined = a.mined || 0, rocks = a.rocks || 0;
+    sum += mined;
+    if (mined > best) { best = mined; leader = pid; }
+    const el = document.getElementById('sm-' + pid); if (!el) return;
+    const prev = minerPrev[pid] || { mined: 0, rocks: 0 };
+    if (mined > prev.mined) {
+      const d = mined - prev.mined;
+      el.classList.remove('dig'); void el.offsetWidth; el.classList.add('dig');
+      const fx = el.querySelector('.sm-fx');
+      const t = document.createElement('span'); t.className = 'sm-plus' + (d >= 50 ? ' big' : ''); t.textContent = '+' + fmt(d);
+      fx.appendChild(t); setTimeout(() => t.remove(), 1000);
+      for (let k = 0; k < Math.min(4, 1 + Math.floor(d / 25)); k++) {
+        const g = document.createElement('span'); g.className = 'sm-chunk';
+        g.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px'); g.style.animationDelay = (k * 0.05) + 's';
+        fx.appendChild(g); setTimeout(() => g.remove(), 900);
+      }
+      el.querySelector('.sm-gold').textContent = fmt(mined);
+      el.querySelector('.sm-pile').style.setProperty('--h', Math.min(60, 8 + mined / 25) + 'px');
+      if (Date.now() - lastCoinSfx > 120) { lastCoinSfx = Date.now(); d >= 50 ? Sound.big() : Sound.coin(); }
+    }
+    if (rocks > prev.rocks) {
+      el.classList.remove('boom'); void el.offsetWidth; el.classList.add('boom');
+      const b = document.createElement('span'); b.className = 'sm-boom'; b.textContent = '💥';
+      el.querySelector('.sm-fx').appendChild(b); setTimeout(() => b.remove(), 900);
+    }
+    minerPrev[pid] = { mined, rocks };
+  });
+  document.querySelectorAll('.sm.lead').forEach(e => e.classList.remove('lead'));
+  if (leader) { const l = document.getElementById('sm-' + leader); if (l) l.classList.add('lead'); }
+  const ms = document.getElementById('mineSum'); if (ms) ms.textContent = fmt(sum);
+}
+
+// ---------- Màn cược: ai cược thế nào ----------
+function updateBets() {
+  const box = document.getElementById('betList'); if (!box) return;
+  const last = state.q === LAST;
+  const rows = Object.keys(players).map(pid => {
+    const a = acts[pid] || {}, s = scores[pid] || {};
+    const base = (a.mined || 0) + (last ? (s.bank || 0) : 0);
+    return { ...players[pid], a, amount: Math.round(base * (a.bet || 0) / 100) };
+  }).sort((x, y) => (y.a.confirmed ? 1 : 0) - (x.a.confirmed ? 1 : 0) || (y.a.bet || 0) - (x.a.bet || 0));
+  const label = a => !a.confirmed ? '<span class="bt wait">⏳ Đang chọn…</span>'
+    : a.bet === 100 ? '<span class="bt allin">ALL-IN 🔥</span>'
+    : a.bet ? `<span class="bt pct">${a.bet}%</span>` : '<span class="bt none">Không cược</span>';
+  box.innerHTML = rows.map(r => `<div class="bet-row ${r.a.confirmed ? 'done' : ''} ${r.a.bet === 100 && r.a.confirmed ? 'is-allin' : ''}">
+    <span class="ava">${ava(r.avatar)}</span><span class="nm">${esc(r.name)}</span>${label(r.a)}
+    <span class="amt">${r.a.confirmed && r.a.bet ? '💰 ' + fmt(r.amount) : ''}</span></div>`).join('');
+  const done = rows.filter(r => r.a.confirmed).length, allin = rows.filter(r => r.a.confirmed && r.a.bet === 100).length;
+  const tot = rows.reduce((t, r) => t + (r.a.confirmed ? r.amount : 0), 0);
+  document.getElementById('betSum').innerHTML = `Đã xác nhận <b>${done}/${rows.length}</b> · Tổng cược 💰 <b>${fmt(tot)}</b>${allin ? ` · <span class="hot">🔥 ${allin} người ALL-IN</span>` : ''}`;
 }
 
 async function renderFinal(firstTime) {
@@ -346,7 +430,7 @@ async function renderFinal(firstTime) {
   app.innerHTML = header() + `<div class="final">
     <h1>🏆 Vinh danh thợ mỏ</h1>
     <div class="podium">${pod.map((r, i) => r ? `<div class="pod pod-${[2, 1, 3][i]}">
-      <div class="ava big">${esc(r.avatar)}</div><div class="nm">${esc(r.name)}</div><div class="bk">💰 ${fmt(r.bank)}</div>
+      <div class="ava big">${ava(r.avatar)}</div><div class="nm">${esc(r.name)}</div><div class="bk">💰 ${fmt(r.bank)}</div>
       <div class="block">${[2, 1, 3][i]}</div></div>` : '<div class="pod"></div>').join('')}</div>
     <div class="final-actions">
       <button class="btn btn-gold" id="csvBtn">⬇ Xuất CSV</button>
@@ -354,7 +438,7 @@ async function renderFinal(firstTime) {
       <button class="btn btn-ghost" id="againBtn">Chơi ván mới</button>
     </div>
     <table class="rank-table"><thead><tr><th>#</th><th>Người chơi</th><th>Vàng</th><th>Đúng</th><th>All-in</th></tr></thead>
-    <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.avatar)} ${esc(r.name)}</td><td>${fmt(r.bank)}</td><td>${r.correctCount || 0}/${QUESTIONS.length}</td><td>${r.allInCount || 0}</td></tr>`).join('')}</tbody></table>
+    <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${ava(r.avatar)} ${esc(r.name)}</td><td>${fmt(r.bank)}</td><td>${r.correctCount || 0}/${QUESTIONS.length}</td><td>${r.allInCount || 0}</td></tr>`).join('')}</tbody></table>
     <div id="answerKey" class="answer-key">
       <h2>📋 Danh mục câu hỏi và đáp án</h2>
       ${QUESTIONS.map((Q, i) => {

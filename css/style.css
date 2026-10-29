@@ -216,3 +216,83 @@ b { color: var(--gold2); }
 @keyframes rain { to { transform: translateY(110vh) rotate(360deg); } }
 @media (max-width: 900px) { .miner { grid-template-columns: 40px 1fr 1fr 70px; font-size: 1rem; } .mine-head h1 { font-size: 2.4rem; } }
 .mine-head, .mine-total-host { position: relative; z-index: 2; }
+
+/* ---------- Mỏ vàng toàn màn hình (host) ---------- */
+.mine-scene { position: fixed; inset: 0; z-index: 5; overflow: hidden; background: #3a2208; }
+.scene-sky { position: absolute; left: 0; right: 0; top: 0; height: 20%; background: linear-gradient(180deg, #ff9d2e 0%, #ffbf5a 70%, #d9822b 100%); border-bottom: 10px solid #7a4a14; z-index: 3; }
+.scene-hud { display: flex; align-items: center; justify-content: space-between; padding: 1.2vh 2vw; gap: 2vw; }
+.hud-box { background: rgba(60,30,0,.75); color: #fff; border-radius: 14px; padding: .6vh 1.4vw; font-size: clamp(1rem, 2.2vw, 2rem); font-weight: 800; white-space: nowrap; }
+.hud-box b { color: var(--gold2); }
+.hud-title { font-size: clamp(1.6rem, 4.5vw, 4.5rem); font-weight: 800; color: #fff7d6; text-shadow: 0 5px 0 #a0520b, 0 0 24px #fff3; }
+.scene-bar { position: absolute; left: 2vw; right: 2vw; bottom: 1.2vh; height: 1.4vh; background: rgba(60,30,0,.5); border-radius: 999px; overflow: hidden; }
+.scene-ground { position: absolute; inset: 20% 0 0 0;
+  background: repeating-linear-gradient(176deg, rgba(0,0,0,.0) 0 7vh, rgba(0,0,0,.12) 7vh 7.6vh),
+    linear-gradient(180deg, #c98a3c 0%, #a8682a 35%, #7c4718 70%, #5a3110 100%); }
+.scene-ground span { position: absolute; transform: translate(-50%, -50%); }
+.scene-ground .nug { border-radius: 46% 54% 40% 60% / 55% 45% 55% 45%; background: radial-gradient(circle at 35% 30%, #fff7b0, #ffd23a 35%, #e0a000 70%, #9a6a00); box-shadow: 0 3px 0 #6b4700, 0 0 14px #ffd23a88; animation: glint 2.4s infinite alternate; }
+.scene-ground .stone { border-radius: 40% 60% 50% 50%; background: radial-gradient(circle at 35% 30%, #b7a48c, #7a6a58 60%, #4a3e32); box-shadow: 0 3px 0 #2a1f15; }
+.scene-ground .gem { background: linear-gradient(135deg, #bff4ff, #39b6ff 50%, #1460c8); clip-path: polygon(50% 0, 100% 35%, 80% 100%, 20% 100%, 0 35%); filter: drop-shadow(0 0 8px #7fe0ff); }
+@keyframes glint { to { filter: brightness(1.25); } }
+.scene-miners { position: absolute; inset: 0; z-index: 4; }
+.sm { position: absolute; transform: translate(-50%, -50%) scale(var(--s, 1)); display: flex; flex-direction: column; align-items: center; width: 150px; }
+.sm-body { position: relative; font-size: 4.2rem; line-height: 1; filter: drop-shadow(0 6px 0 rgba(0,0,0,.35)); }
+.sm-pick { position: absolute; right: -2.2rem; top: -1rem; font-size: 3rem; transform-origin: 20% 85%; transform: rotate(-20deg) scaleX(-1); }
+.sm.dig .sm-pick { animation: dig .22s ease-out; }
+.sm.dig .sm-ava { animation: hop .22s; }
+@keyframes dig { 0% { transform: rotate(-60deg) scaleX(-1); } 60% { transform: rotate(35deg) scaleX(-1); } 100% { transform: rotate(-20deg) scaleX(-1); } }
+@keyframes hop { 50% { transform: translateY(-6px); } }
+.sm-ava { display: inline-block; }
+.sm-pile { width: 90px; height: var(--h, 8px); margin-top: -6px; border-radius: 50% 50% 8px 8px / 100% 100% 8px 8px;
+  background: radial-gradient(circle at 50% 20%, #fff2a0, #ffcc2a 40%, #c88a00); box-shadow: 0 0 18px #ffcc2a66; transition: height .3s; }
+.sm-tag { margin-top: 4px; background: rgba(30,15,0,.8); border: 2px solid #ffffff22; border-radius: 12px; padding: 2px 10px; text-align: center; min-width: 110px; }
+.sm-name { display: block; font-weight: 800; font-size: 1.1rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; }
+.sm-gold { display: block; font-weight: 800; font-size: 1.3rem; color: var(--gold2); }
+.sm-gold::before { content: '💰 '; }
+.sm-crown { position: absolute; top: -2.6rem; font-size: 2.6rem; opacity: 0; transition: opacity .3s; animation: bob 1s infinite; }
+.sm.lead .sm-crown { opacity: 1; }
+.sm.lead .sm-tag { border-color: var(--gold); box-shadow: 0 0 20px #ffd23a88; }
+.sm.boom .sm-body { animation: stun .9s; }
+@keyframes stun { 0%, 80% { filter: grayscale(1) brightness(.6); } 10%, 30%, 50% { transform: translateX(-6px); } 20%, 40%, 60% { transform: translateX(6px); } 100% { filter: none; transform: none; } }
+.sm-fx { position: absolute; top: -10px; left: 50%; width: 0; height: 0; z-index: 2; }
+.sm-plus { position: absolute; left: -30px; top: -20px; font-weight: 800; font-size: 1.7rem; color: #fff6b0; text-shadow: 0 3px 0 #6b3d00; white-space: nowrap; animation: floatUp 1s forwards; }
+.sm-plus.big { font-size: 2.4rem; color: #fff; text-shadow: 0 0 14px #ffd23a, 0 3px 0 #6b3d00; }
+.sm-chunk { position: absolute; left: 0; top: 40px; width: 16px; height: 13px; border-radius: 45%; background: radial-gradient(circle at 35% 30%, #fff7b0, #ffd23a 45%, #c88a00); animation: chunk .8s ease-out forwards; }
+@keyframes chunk { 0% { transform: translate(0, 0); opacity: 1; } 50% { transform: translate(calc(var(--dx) * .6), -70px); } 100% { transform: translate(var(--dx), 10px); opacity: 0; } }
+.sm-boom { position: absolute; left: -24px; top: 0; font-size: 3rem; animation: pop .3s, floatUp .9s .3s forwards; }
+
+/* ---------- Màn cược (host) ---------- */
+.bet-screen { max-width: 1200px; margin: 0 auto; text-align: center; }
+.bet-head { display: flex; align-items: center; justify-content: space-between; text-align: left; }
+.bet-head h1 { font-size: 3.4rem; color: var(--gold); }
+.bet-summary { font-size: 1.5rem; margin: 6px 0 14px; }
+.bet-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; text-align: left; margin-bottom: 18px; }
+.bet-row { display: grid; grid-template-columns: 44px 1fr auto; grid-template-rows: auto auto; column-gap: 10px; align-items: center; background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 8px 14px; opacity: .55; transition: all .3s; }
+.bet-row.done { opacity: 1; animation: pop .35s; }
+.bet-row.is-allin { border-color: #ff6a00; background: linear-gradient(90deg, #5a1a00, var(--card)); box-shadow: 0 0 18px #ff6a0066; }
+.bet-row .ava { grid-row: span 2; font-size: 2rem; }
+.bet-row .nm { font-weight: 800; font-size: 1.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bet-row .amt { grid-column: 2 / 4; color: var(--gold2); font-weight: 700; }
+.bt { font-weight: 800; border-radius: 999px; padding: 2px 12px; font-size: 1rem; white-space: nowrap; }
+.bt.wait { color: var(--muted); } .bt.none { background: #2f4a3a; color: #bff3d0; }
+.bt.pct { background: #2a3f66; color: #cfe0ff; } .bt.allin { background: #ff6a00; color: #fff; }
+/* phone */
+.bet-btn.nobet { background: #1c2a22; border-color: #2f4a3a; }
+.confirmed { font-size: 1.3rem; margin-top: 16px; }
+
+/* ---------- Nhân vật thợ mỏ SVG ---------- */
+.mava { display: inline-block; width: 1.15em; height: 1.25em; vertical-align: middle; }
+.mava svg, .mfig { width: 100%; height: 100%; display: block; overflow: visible; }
+.mfig .arm { transform-box: view-box; transform-origin: 65px 58px; transform: rotate(-12deg); }
+.dig .mfig .arm, .sm.dig .mfig .arm { animation: armSwing .24s ease-out; }
+@keyframes armSwing { 0% { transform: rotate(-40deg); } 55% { transform: rotate(75deg); } 100% { transform: rotate(-12deg); } }
+.sm-body .mfig { width: 120px; height: 130px; }
+.sm-body { font-size: 1rem; }
+.ava-opt svg { width: 100%; height: 64px; }
+.ava-opt { padding: 4px 0; }
+.ava.huge .mava { width: 110px; height: 120px; }
+.dig-stage { position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 0; margin: 10px 0; }
+.dig-miner { width: 130px; height: 150px; margin-right: -30px; z-index: 2; pointer-events: none; }
+.dig-stage .rock-btn { margin: 0; width: min(58vw, 230px); }
+.dig-stage .rock-ico { font-size: 5.5rem; }
+.pod .ava.big .mava { width: 100px; height: 110px; }
+.pod-1 .ava .mava { width: 130px; height: 140px; }

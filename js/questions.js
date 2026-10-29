@@ -26,14 +26,14 @@ const QUESTIONS = [
 // Luật chơi
 const RULES = {
   START_BANK: 100,          // vàng khởi đầu trong Két
-  DUR: { ready: 3, mine: 5, topic: 3, bet: 5, answer: 15, reveal: 6 }, // giây
+  DUR: { ready: 3, mine: 5, topic: 3, bet: 10, answer: 15, reveal: 6 }, // giây
   MAX_TAPS_PER_SEC: 12,     // chống auto-click
   MAX_MINE: 3000,           // trần vàng đào/câu
   ROCK_CHANCE: 0.08, BIG_CHANCE: 0.07, ROCK_LOCK_MS: 1000,
-  DEFAULT_BET: 25,          // không chọn cược → tự cược 25%
+  CORRECT_BONUS: 100,       // câu không cược (hoặc chọn Không cược): đúng +100, cộng thưởng tốc độ tối đa +100
   SPEED_BONUS: 0.5,         // thưởng tốc độ tối đa = 50% số cược
   LAST_MULT: 2,             // câu cuối: thắng x2, được cược cả Két
-  FORCED_COUNT: 3,          // 3 câu ngẫu nhiên bị ép mức cược
+  BET_COUNT: 5,             // số câu có bước cược (câu cuối + 4 câu ngẫu nhiên)
 };
 
 const AVATARS = ['👷', '🤠', '🧙', '🥷', '🧑‍🚀', '🦊', '🐻', '🐼', '🐯', '🦁', '🐸', '🐵', '🦄', '🐲', '🐧', '🐙'];
