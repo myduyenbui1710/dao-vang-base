@@ -3,7 +3,7 @@ DB.init();
 modeBanner();
 
 const app = document.getElementById('app');
-const TIMED = ['ready', 'mine', 'topic', 'bet', 'answer', 'reveal'];
+const TIMED = ['ready', 'mine', 'topic', 'answer', 'reveal']; // bước cược dừng chờ host bấm Next
 const NEXT = { ready: 'mine', mine: 'topic', topic: 'bet', bet: 'answer', answer: 'reveal', reveal: 'board' };
 const LAST = QUESTIONS.length - 1;
 
@@ -101,7 +101,7 @@ function checkAllAnswered() {
   // Trả lời luôn chạy đủ 15s. Riêng bước cược: mọi người đã xác nhận thì mở câu hỏi luôn.
   if (!state || state.phase !== 'bet') return;
   const pids = Object.keys(players);
-  if (pids.length && pids.every(pid => acts[pid] && acts[pid].confirmed)) setTimeout(() => { if (state.phase === 'bet') advance(); }, 1500);
+
 }
 
 setInterval(() => {
@@ -229,7 +229,7 @@ function renderInner(soft = false) {
           <h2>Quét QR để vào mỏ vàng ⛏️</h2>
           ${avatarsGrid()}
           <div class="rules-mini">
-            <div>⛏️ <b>Đào 5s</b>: bấm liên tục, có lúc trúng cục to x5, có lúc đào phải đá</div>
+            <div>🪝 <b>Kéo vàng ${RULES.DUR.mine}s</b>: chạm điện thoại để thả móc. Vàng to nặng kéo chậm, kim cương nhẹ mà đắt, đá thì nặng mà rẻ</div>
             <div>👀 <b>Hé chủ đề 3s</b></div>
             <div>🎲 <b>${RULES.BET_COUNT} câu có cược</b>: Không cược · 25% · 50% · ALL-IN số vàng vừa đào, bấm Xác nhận</div>
             <div>❓ <b>Trả lời 15s</b>: có cược thì đúng nhận số cược, sai mất số cược. Không cược thì đúng được +${RULES.CORRECT_BONUS}</div>
@@ -241,8 +241,8 @@ function renderInner(soft = false) {
     case 'ready':
       Sound.play('tense');
       body = `<div class="phase-big"><p class="sub">Câu ${state.q + 1}/${QUESTIONS.length}${state.q === LAST ? ' · 🌙 ĐÊM VÀNG x2' : ''}</p>
-        <h1>CHUẨN BỊ ĐÀO!</h1><div class="ready-num pop" id="cd"></div>
-        <p class="sub">Cầm điện thoại lên, sẵn sàng bấm thật nhanh ⛏️</p></div>`;
+        <h1>CHUẨN BỊ KÉO VÀNG!</h1><div class="ready-num pop" id="cd"></div>
+        <p class="sub">Cầm điện thoại lên, chạm để thả móc kéo vàng 🪝</p></div>`;
       break;
     case 'mine':
       Sound.play('mine');
@@ -256,9 +256,8 @@ function renderInner(soft = false) {
     case 'bet':
       body = `<div class="bet-screen"><div class="bet-head"><div><h1>🎲 ĐẶT CƯỢC</h1>
         <p class="sub">Chủ đề: <b>${esc(Q.topic)}</b>${state.q === LAST ? ' · <span class="hot">🌙 Đêm vàng: cược cả Két, thắng x2</span>' : ''}</p></div>
-        <div class="cd-num" id="cd"></div></div>${timerBar()}
-        <div class="bet-summary" id="betSum"></div><div class="bet-list" id="betList"></div>
-        <button class="btn btn-gold" id="openQ">Mở câu hỏi ▶</button></div>`;
+        <button class="btn btn-gold btn-xl" id="openQ">Next ▶ Mở câu hỏi</button></div>
+        <div class="bet-summary" id="betSum"></div><div class="bet-list" id="betList"></div></div>`;
       break;
     case 'answer':
       lastTickSec = -1;
@@ -324,78 +323,70 @@ function updateLive() {
   if (state.phase === 'answer') el.innerHTML = `${list.filter(a => a.ans != null).length}/${n} đã trả lời`;
 }
 
-// ---------- Màn mỏ vàng toàn màn hình ----------
-function minerSlots(n) {
-  const cols = Math.max(1, Math.min(8, Math.ceil(Math.sqrt(n * 2))));
-  const rows = Math.ceil(n / cols);
-  return [...Array(n)].map((_, i) => {
-    const r = Math.floor(i / cols), c = i % cols;
-    const inRow = Math.min(cols, n - r * cols);
-    const x = 8 + (c + 0.5) * (84 / inRow) + (r % 2 ? 2 : -2);
-    const y = 30 + (rows === 1 ? 30 : r * (52 / Math.max(1, rows - 1)));
-    return { x, y };
-  });
-}
-
+// ---------- Màn mỏ vàng toàn màn hình: mỗi thợ mỏ một sợi dây ----------
 function mineScene() {
   const list = Object.keys(players).map(pid => ({ pid, ...players[pid] }))
     .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
-  const slots = minerSlots(list.length);
-  const scale = list.length > 24 ? 0.7 : list.length > 12 ? 0.85 : 1;
-  // Trang trí cố định theo số thứ tự để mỗi lần hiển thị giống nhau
-  const decor = [...Array(26)].map((_, i) => {
-    const x = (i * 37 + 11) % 96, y = 24 + ((i * 53) % 72), k = i % 9;
+  const n = Math.max(1, list.length);
+  const scale = clamp(10 / n, 0.45, 1);
+  const decor = [...Array(30)].map((_, i) => {
+    const x = (i * 37 + 11) % 96 + 2, y = 34 + ((i * 53) % 62), k = i % 9;
     const cls = k === 0 ? 'gem' : k < 3 ? 'stone' : 'nug';
-    const sz = cls === 'nug' ? 26 + (i * 13) % 40 : 22 + (i * 7) % 18;
+    const sz = cls === 'nug' ? 24 + (i * 13) % 46 : 20 + (i * 7) % 20;
     return `<span class="${cls}" style="left:${x}%;top:${y}%;width:${sz}px;height:${sz * 0.8}px"></span>`;
   }).join('');
   return `<div class="mine-scene" style="--s:${scale}">
     <div class="scene-sky"><div class="scene-hud">
       <div class="hud-box">Câu <b>${state.q + 1}</b>/${QUESTIONS.length}${isBetQ() ? ' · 🎲' : ''}</div>
-      <div class="hud-title">⛏️ ĐÀO VÀNG!</div>
+      <div class="hud-title">🪝 KÉO VÀNG!</div>
       <div class="hud-box">⏱ <b id="cd"></b>s &nbsp; 💰 <b id="mineSum">0</b></div>
     </div><div class="scene-bar"><div class="cd-bar" id="cdbar"></div></div></div>
     <div class="scene-ground">${decor}</div>
-    <div class="scene-miners">${list.map((p, i) => `<div class="sm" id="sm-${p.pid}" style="left:${slots[i].x}%;top:${slots[i].y}%">
-      <div class="sm-fx"></div><div class="sm-crown">👑</div>
-      <div class="sm-body">${/^m\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>
-      <div class="sm-pile"></div>
-      <div class="sm-tag"><span class="sm-name">${esc(p.name)}</span><span class="sm-gold">0</span></div></div>`).join('')}</div>
+    <div class="rope-row">${list.map((p, i) => `<div class="rm" id="sm-${p.pid}" style="left:${(i + 0.5) / n * 100}%">
+      <div class="rm-tag"><span class="sm-crown">👑</span><span class="sm-name">${esc(p.name)}</span><span class="sm-gold">0</span></div>
+      <div class="rm-fig">${/^m\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>
+      <div class="rm-pulley"></div>
+      <div class="rope" style="animation-delay:-${(i * 0.37) % 2.4}s"><div class="rope-line"></div><div class="claw-hook"><span class="hook-item"></span></div></div>
+      <div class="sm-fx"></div>
+    </div>`).join('')}</div>
   </div>`;
 }
 
 let lastCoinSfx = 0;
+function pullRope(el, ev) {
+  const rope = el.querySelector('.rope'), item = el.querySelector('.hook-item');
+  const depth = Math.round(innerHeight * (0.3 + Math.random() * 0.4));
+  rope.style.setProperty('--depth', depth + 'px');
+  item.className = 'hook-item';
+  rope.classList.remove('pull'); void rope.offsetWidth; rope.classList.add('pull');
+  el.querySelector('.rm-fig').classList.remove('dig'); void el.offsetWidth; el.querySelector('.rm-fig').classList.add('dig');
+  setTimeout(() => { item.className = 'hook-item it-' + (ev.type || ev.kind); }, 500);
+  setTimeout(() => {
+    item.className = 'hook-item';
+    const fx = el.querySelector('.sm-fx');
+    const t = document.createElement('span');
+    t.className = 'sm-plus' + (ev.v >= 300 ? ' big' : '') + (ev.kind === 'rock' ? ' bad' : '');
+    t.textContent = (ev.kind === 'gem' ? '💎 ' : ev.kind === 'rock' ? '🪨 ' : '') + '+' + fmt(ev.v);
+    fx.appendChild(t); setTimeout(() => t.remove(), 1100);
+    if (Date.now() - lastCoinSfx > 150) { lastCoinSfx = Date.now(); ev.kind === 'rock' ? Sound.rock() : ev.v >= 300 ? Sound.big() : Sound.coin(); }
+  }, 1250);
+}
+
 function updateMiners() {
   let sum = 0, leader = null, best = 0;
   Object.keys(players).forEach(pid => {
-    const a = acts[pid] || {}, mined = a.mined || 0, rocks = a.rocks || 0;
+    const a = acts[pid] || {}, mined = a.mined || 0;
     sum += mined;
     if (mined > best) { best = mined; leader = pid; }
     const el = document.getElementById('sm-' + pid); if (!el) return;
-    const prev = minerPrev[pid] || { mined: 0, rocks: 0 };
-    if (mined > prev.mined) {
-      const d = mined - prev.mined;
-      el.classList.remove('dig'); void el.offsetWidth; el.classList.add('dig');
-      const fx = el.querySelector('.sm-fx');
-      const t = document.createElement('span'); t.className = 'sm-plus' + (d >= 50 ? ' big' : ''); t.textContent = '+' + fmt(d);
-      fx.appendChild(t); setTimeout(() => t.remove(), 1000);
-      for (let k = 0; k < Math.min(4, 1 + Math.floor(d / 25)); k++) {
-        const g = document.createElement('span'); g.className = 'sm-chunk';
-        g.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px'); g.style.animationDelay = (k * 0.05) + 's';
-        fx.appendChild(g); setTimeout(() => g.remove(), 900);
-      }
-      el.querySelector('.sm-gold').textContent = fmt(mined);
-      el.querySelector('.sm-pile').style.setProperty('--h', Math.min(60, 8 + mined / 25) + 'px');
-      if (Date.now() - lastCoinSfx > 120) { lastCoinSfx = Date.now(); d >= 50 ? Sound.big() : Sound.coin(); }
+    const prevN = minerPrev[pid] || 0;
+    if (a.ev && a.ev.n > prevN) {
+      minerPrev[pid] = a.ev.n;
+      pullRope(el, a.ev);
+      setTimeout(() => { el.querySelector('.sm-gold').textContent = fmt(mined); }, 1250);
     }
-    if (rocks > prev.rocks) {
-      el.classList.remove('boom'); void el.offsetWidth; el.classList.add('boom');
-      const b = document.createElement('span'); b.className = 'sm-boom'; b.textContent = '💥';
-      el.querySelector('.sm-fx').appendChild(b); setTimeout(() => b.remove(), 900);
-    }
-    minerPrev[pid] = { mined, rocks };
   });
-  document.querySelectorAll('.sm.lead').forEach(e => e.classList.remove('lead'));
+  document.querySelectorAll('.rm.lead').forEach(e => e.classList.remove('lead'));
   if (leader) { const l = document.getElementById('sm-' + leader); if (l) l.classList.add('lead'); }
   const ms = document.getElementById('mineSum'); if (ms) ms.textContent = fmt(sum);
 }

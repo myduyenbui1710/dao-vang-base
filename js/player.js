@@ -80,7 +80,7 @@ function act(obj) {
   return DB.update(R(`actions/${state.q}/${pid}`), obj);
 }
 setInterval(() => {
-  if (mine.dirty && state && mine.q === state.q) { mine.dirty = false; act({ mined: mine.mined, rocks: mine.rocks }); }
+  if (mine.dirty && state && mine.q === state.q) { mine.dirty = false; act({ mined: mine.mined, rocks: mine.rocks, ev: mine.ev || null }); }
 }, 400);
 
 // ---------- Hiển thị ----------
@@ -126,13 +126,13 @@ async function renderInner(soft = false) {
     case 'ready':
       if (changed && navigator.vibrate) navigator.vibrate(150);
       html = `${topBar()}<div class="p-card center"><p class="muted">Câu ${state.q + 1}/${QUESTIONS.length}${last ? ' · 🌙 Đêm vàng x2' : ''}</p>
-        <h1>Chuẩn bị đào!</h1><div class="ready-num pop" id="cd"></div><div class="ava huge bob">⛏️</div></div>`;
+        <h1>Chuẩn bị kéo vàng!</h1><div class="ready-num pop" id="cd"></div><div class="ava huge bob">🪝</div></div>`;
       break;
     case 'mine':
-      html = `${topBar()}<div class="p-phase">ĐÀO! <span id="cd"></span>s</div>${timer()}
-        <div class="mine-total">Túi: 💰 <b id="minedNum">${fmt(mine.mined)}</b></div>
-        <div class="dig-stage"><div class="dig-miner" id="digMiner">${minerSVG(me.avatar)}</div><button class="rock-btn" id="rock"><span class="rock-ico">🪨</span></button></div>
-        <p class="muted center">Bấm liên tục! Có lúc trúng cục to x5, có lúc đào phải đá 💥</p>`;
+      html = `<div class="claw-top"><span class="p-phase">⛏️ <span id="cd"></span>s</span>
+        <span class="claw-gold">Túi 💰 <b id="minedNum">${fmt(mine.mined)}</b></span></div>${timer()}
+        <canvas id="claw" class="claw-cv"></canvas>
+        <p class="muted center small">Chạm màn hình để thả móc. Vàng to nặng, kéo chậm. Kim cương 💎 nhẹ mà đắt!</p>`;
       break;
     case 'topic':
       html = `${topBar()}<div class="p-card center"><p class="muted">Chủ đề câu ${state.q + 1}</p>
@@ -144,14 +144,14 @@ async function renderInner(soft = false) {
       const opts = [0, 25, 50, 100];
       const done = !!myAct.confirmed;
       const cur = done ? myAct.bet : betPick;
-      html = `${topBar()}<div class="p-phase">ĐẶT CƯỢC <span id="cd"></span>s</div>${timer()}
+      html = `${topBar()}<div class="p-phase">🎲 ĐẶT CƯỢC</div>
         <p class="center muted">${last ? '🌙 Đêm vàng: cược trên Túi + Két, thắng x2' : 'Cược trên số vàng vừa đào, phần còn lại vào Két'}</p>
         <div class="mine-total">Có thể cược: 💰 <b>${fmt(base)}</b></div>
         <div class="bets">${opts.map(p => `<button class="bet-btn ${p === 100 ? 'allin' : ''} ${p === 0 ? 'nobet' : ''} ${cur === p ? 'sel' : ''}" data-p="${p}" ${done ? 'disabled' : ''}>
           <span class="bp">${p === 100 ? 'ALL-IN 🔥' : p === 0 ? 'Không cược' : p + '%'}</span><span class="ba">${p ? '💰 ' + fmt(Math.round(base * p / 100)) : 'An toàn 🛡️'}</span></button>`).join('')}</div>
         ${done ? `<p class="center confirmed pop">✅ Đã xác nhận: <b>${cur === 100 ? 'ALL-IN' : cur ? cur + '%' : 'Không cược'}</b></p>`
           : `<button class="btn btn-gold btn-block" id="confirmBet" ${cur == null ? 'disabled' : ''}>Xác nhận cược</button>
-             <p class="muted center small">Hết giờ chưa xác nhận = Không cược</p>`}`;
+             <p class="muted center small">Host bấm Next mà chưa xác nhận = Không cược</p>`}`;
       break;
     }
     case 'answer': {
@@ -203,36 +203,21 @@ async function renderInner(soft = false) {
 }
 
 function bind() {
-  const rock = document.getElementById('rock');
-  if (rock) {
-    const tap = e => {
-      e.preventDefault();
+  const cv = document.getElementById('claw');
+  if (cv) {
+    Claw.start(cv, me.avatar, g => {
       if (!state || state.phase !== 'mine') return;
-      const now = Date.now();
-      if (now < mine.lockedUntil) return;
-      mine.taps = mine.taps.filter(t => now - t < 1000);
-      if (mine.taps.length >= RULES.MAX_TAPS_PER_SEC) return;
-      mine.taps.push(now);
-      const pt = e.touches ? e.touches[0] : e;
-      const x = (pt.clientX || innerWidth / 2) - 20, y = (pt.clientY || innerHeight / 2) - 40;
-      const r = Math.random();
-      if (r < RULES.ROCK_CHANCE) {
-        mine.lockedUntil = now + RULES.ROCK_LOCK_MS; mine.rocks++; mine.dirty = true;
-        rock.classList.add('stunned'); setTimeout(() => rock.classList.remove('stunned'), RULES.ROCK_LOCK_MS);
-        floatText(x, y, '💥 Đá!', 'f-bad'); Sound.rock(); navigator.vibrate && navigator.vibrate(200);
-        return;
-      }
-      let g;
-      if (r < RULES.ROCK_CHANCE + RULES.BIG_CHANCE) { g = rand(10, 16) * 5; floatText(x, y, `💰 +${g} x5!`, 'f-big'); Sound.big(); }
-      else { g = rand(6, 15); floatText(x, y, `+${g}`); Sound.coin(); }
-      mine.mined = Math.min(RULES.MAX_MINE, mine.mined + g); mine.dirty = true;
-      rock.classList.remove('hit'); void rock.offsetWidth; rock.classList.add('hit');
-      const dm = document.getElementById('digMiner'); if (dm) { dm.classList.remove('dig'); void dm.offsetWidth; dm.classList.add('dig'); }
-      document.getElementById('minedNum').textContent = fmt(mine.mined);
-    };
-    rock.addEventListener('touchstart', tap, { passive: false });
-    rock.addEventListener('mousedown', e => { if (!('ontouchstart' in window)) tap(e); });
-  }
+      mine.mined = Math.min(RULES.MAX_MINE, mine.mined + g.v);
+      if (g.kind === 'rock') mine.rocks++;
+      mine.grabs = (mine.grabs || 0) + 1;
+      mine.ev = { n: mine.grabs, kind: g.kind, type: g.type, v: g.v };
+      mine.dirty = true;
+      const el = document.getElementById('minedNum'); if (el) el.textContent = fmt(mine.mined);
+    });
+    const tap = e => { e.preventDefault(); if (state && state.phase === 'mine') Claw.tap(); };
+    cv.addEventListener('touchstart', tap, { passive: false });
+    cv.addEventListener('mousedown', e => { if (!('ontouchstart' in window)) tap(e); });
+  } else Claw.stop();
   app.querySelectorAll('.bet-btn').forEach(b => b.onclick = () => {
     if (myAct.confirmed) return;
     betPick = +b.dataset.p;

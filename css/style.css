@@ -296,3 +296,54 @@ b { color: var(--gold2); }
 .dig-stage .rock-ico { font-size: 5.5rem; }
 .pod .ava.big .mava { width: 100px; height: 110px; }
 .pod-1 .ava .mava { width: 130px; height: 140px; }
+
+/* ---------- Kéo vàng bằng dây (host) ---------- */
+.mine-scene .scene-sky { height: 30%; }
+.mine-scene .scene-ground { inset: 30% 0 0 0; }
+.rope-row { position: absolute; left: 0; right: 0; top: 0; height: 30%; z-index: 4; }
+.rm { position: absolute; bottom: 0; transform: translateX(-50%); width: calc(150px * var(--s)); display: flex; flex-direction: column; align-items: center; }
+.rm-tag { position: relative; background: rgba(60,30,0,.8); border-radius: 10px; padding: 1px 8px; text-align: center; max-width: 100%; margin-bottom: 2px; border: 2px solid transparent; }
+.rm-tag .sm-name { font-size: calc(1.05rem * max(var(--s), .75)); max-width: calc(140px * var(--s)); }
+.rm-tag .sm-gold { font-size: calc(1.2rem * max(var(--s), .75)); }
+.rm-tag .sm-crown { top: -2rem; left: 50%; transform: translateX(-50%); font-size: 1.8rem; }
+.rm.lead .sm-crown { opacity: 1; }
+.rm.lead .rm-tag { border-color: var(--gold); box-shadow: 0 0 16px #ffd23a99; }
+.rm-fig { width: calc(80px * var(--s)); height: calc(88px * var(--s)); margin-bottom: -4px; }
+.rm-fig .mfig { width: 100%; height: 100%; }
+.rm-fig.dig .mfig .arm { animation: armSwing .3s ease-out 2; }
+.rm-pulley { width: calc(26px * var(--s)); height: calc(26px * var(--s)); border-radius: 50%; background: radial-gradient(circle, #cfd8dc 30%, #607d8b 35%, #455a64); border: 3px solid #3e2723; position: absolute; bottom: -12px; z-index: 2; }
+.rope { position: absolute; top: 100%; left: 50%; width: 0; transform-origin: top center; animation: ropeSwing 2.4s ease-in-out infinite alternate; z-index: 3; }
+@keyframes ropeSwing { from { transform: rotate(-55deg); } to { transform: rotate(55deg); } }
+.rope-line { position: absolute; left: -1.5px; top: 0; width: 3px; height: 34px; background: #3b2414; }
+.claw-hook { position: absolute; left: 0; top: 34px; transform: translateX(-50%); width: 28px; height: 22px;
+  border: 4px solid #6b7780; border-top: none; border-radius: 0 0 14px 14px; }
+.rope.pull { animation-play-state: paused; }
+.rope.pull .rope-line { animation: dropLine 1.25s ease-in-out; }
+.rope.pull .claw-hook { animation: dropHook 1.25s ease-in-out; }
+@keyframes dropLine { 0% { height: 34px; } 40% { height: var(--depth); } 100% { height: 34px; } }
+@keyframes dropHook { 0% { top: 34px; } 40% { top: var(--depth); } 100% { top: 34px; } }
+.hook-item { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: none; }
+.hook-item[class*="it-"] { display: block; }
+.it-gold_s, .it-gold_m, .it-gold_l, .it-gold { border-radius: 46% 54% 40% 60% / 55% 45% 55% 45%; background: radial-gradient(circle at 35% 30%, #fff7b0, #ffd23a 35%, #e0a000 70%, #9a6a00); box-shadow: 0 0 14px #ffd23a; }
+.it-gold_s, .it-gold { width: 26px; height: 22px; } .it-gold_m { width: 42px; height: 34px; } .it-gold_l { width: 70px; height: 56px; }
+.it-rock_s, .it-rock_l, .it-rock { border-radius: 40% 60% 50% 50%; background: radial-gradient(circle at 35% 30%, #b7a48c, #7a6a58 60%, #4a3e32); }
+.it-rock_s, .it-rock { width: 32px; height: 26px; } .it-rock_l { width: 54px; height: 44px; }
+.it-gem { width: 22px; height: 22px; background: linear-gradient(135deg, #bff4ff, #39b6ff 50%, #1460c8); clip-path: polygon(50% 0, 100% 35%, 80% 100%, 20% 100%, 0 35%); filter: drop-shadow(0 0 8px #7fe0ff); }
+.it-bag { width: 34px; height: 32px; border-radius: 45% 45% 40% 40%; background: #a0703a; }
+.it-bag::after { content: '?'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #ffe9a8; font-weight: 800; }
+.rm .sm-fx { position: absolute; top: 0; left: 50%; }
+.sm-plus.bad { color: #ffb3b3; }
+
+/* ---------- Kéo vàng (điện thoại) ---------- */
+.claw-top { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.claw-top .p-phase { margin: 0; font-size: 1.6rem; }
+.claw-gold { font-size: 1.3rem; font-weight: 800; }
+.claw-cv { display: block; width: 100%; height: min(64vh, 560px); border-radius: 16px; touch-action: none; margin-top: 6px; box-shadow: 0 6px 0 #1a0f04; }
+.bet-head .btn-xl { font-size: 1.4rem; }
+
+.mine-scene .scene-sky { height: 36%; }
+.mine-scene .scene-ground { inset: 36% 0 0 0; }
+.rope-row { height: 36%; }
+.mine-scene .scene-bar { top: 0; bottom: auto; left: 0; right: 0; height: 8px; border-radius: 0; }
+.mine-scene .scene-hud { padding-top: 14px; }
+.rm .sm-fx { top: 55%; }
