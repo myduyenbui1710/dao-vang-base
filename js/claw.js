@@ -15,7 +15,7 @@ const THEMES = [
   { name: 'Rừng Rậm', icon: '🌴', sky: ['#3fa34d', '#9fdc7a'], dirt: ['#5c8a3a', '#3f6327', '#223a14'], shape: 'crystal', pal: ['#d8ffd0', '#34d17a', '#0f7a45'],
     special: { icon: '🏆', v: 480 }, animals: [{ icon: '🐒', v: 60, sp: 85 }, { icon: '🐊', v: 90, sp: 30 }], walls: ['🌳'] },
   { name: 'Vũ Trụ', icon: '🚀', sky: ['#05051a', '#1a1a4a'], dirt: ['#1a1a40', '#10102c', '#050514'], shape: 'meteor', pal: ['#e8f4ff', '#8fb4e8', '#3f5a90'],
-    special: { icon: '⭐', v: 500 }, animals: [{ icon: '👽', v: 70, sp: 55 }, { icon: '🛸', v: 110, sp: 100 }], walls: ['🌑'] },
+    special: { icon: '⭐', v: 500 }, animals: [{ icon: '👽', v: 70, sp: 55 }, { icon: '🛸', v: 110, sp: 100 }], walls: ['🪐'] },
   { name: 'Đảo Hải Tặc', icon: '🏴‍☠️', sky: ['#2f9fd0', '#a6e1f5'], dirt: ['#e0c080', '#b08a4c', '#6b4a20'], shape: 'coin', pal: ['#fff0a0', '#ffc61a', '#99690a'],
     special: { icon: '👑', v: 550 }, animals: [{ icon: '🦜', v: 60, sp: 90 }, { icon: '🐀', v: 40, sp: 70 }], walls: ['💀'] },
   { name: 'Đêm Vàng', icon: '🌙', sky: ['#0a0a2a', '#2a1a55'], dirt: ['#2a1c50', '#1a1038', '#0a0620'], shape: 'lava', pal: ['#fffbd0', '#ffd700', '#b8860b'],
