@@ -245,9 +245,8 @@ function bind() {
       mine.dirty = true;
       const el = document.getElementById('minedNum'); if (el) el.textContent = fmt(mine.mined);
     }, state.q);
-    const tap = e => { e.preventDefault(); if (state && state.phase === 'mine') Claw.tap(); };
-    cv.addEventListener('touchstart', tap, { passive: false });
-    cv.addEventListener('mousedown', e => { if (!('ontouchstart' in window)) tap(e); });
+    // pointerdown nhận cả cảm ứng lẫn chuột, kể cả laptop màn cảm ứng
+    cv.addEventListener('pointerdown', e => { e.preventDefault(); Sound.unlock(); if (state && state.phase === 'mine') Claw.tap(); });
   } else Claw.stop();
   app.querySelectorAll('.bet-btn').forEach(b => b.onclick = () => {
     if (myAct.confirmed) return;

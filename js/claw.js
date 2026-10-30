@@ -103,9 +103,9 @@ function drawRock(ctx, r, seed) {
 }
 
 function drawBag(ctx, r) {
-  ctx.fillStyle = '#a0703a'; ctx.beginPath(); ctx.ellipse(0, 3, r, r * 0.85, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c98f3f'; ctx.strokeStyle = '#fff0c0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, 3, r, r * 0.85, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#7a5226'; ctx.fillRect(-5, -r + 2, 10, 6);
-  ctx.fillStyle = '#ffe9a8'; ctx.font = `bold ${r}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', 0, 4);
+  ctx.fillStyle = '#4a2a00'; ctx.font = `bold ${r * 1.2}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', 0, 4);
 }
 
 const Claw = (() => {
@@ -118,7 +118,7 @@ const Claw = (() => {
   }
   function freeSpot(r) {
     for (let k = 0; k < 30; k++) {
-      const x = 24 + Math.random() * (W - 48), y = SKY + 45 + Math.random() * (H - SKY - 75);
+      const x = r + 6 + Math.random() * (W - 2 * r - 12), y = SKY + r + 6 + Math.random() * Math.max(1, H - SKY - 2 * r - 12);
       if (occupied(x, y, r)) return { x, y };
     }
     return null;

@@ -386,3 +386,21 @@ b { color: var(--gold2); }
 .ledge { position: absolute; left: 0; right: 0; height: 12px; z-index: 3; background: repeating-linear-gradient(90deg, #8a5a26 0 46px, #6e4518 46px 50px); border-top: 2px solid #b98a4a; border-bottom: 3px solid #3f270c; }
 .rope { z-index: 5; }
 .rm-tag { padding: 1px 4px; }
+
+/* ---------- Điện thoại: mọi cỡ màn hình ---------- */
+.claw-cv { height: clamp(380px, calc(100dvh - 130px), 620px); }
+#confirmBet { position: sticky; bottom: 8px; z-index: 5; }
+.p-opt { touch-action: manipulation; }
+.bet-btn, .ava-opt, #confirmBet { touch-action: manipulation; }
+@media (max-height: 720px) {
+  .player { padding-top: 8px; padding-bottom: 12px; }
+  .p-phase { font-size: 1.4rem; margin-top: 6px; }
+  .player .mine-total { font-size: 1.15rem; margin: 2px 0; }
+  .bets { gap: 7px; margin-top: 6px; }
+  .bet-btn { padding: 9px 14px; font-size: 1.1rem; }
+  .btn-block { margin-top: 10px; }
+  .p-q { font-size: 1rem; padding: 10px; margin: 6px 0; }
+  .p-opts { gap: 6px; }
+  .p-opt { padding: 8px 10px; min-height: 50px; font-size: .95rem; }
+  .claw-cv + p { display: none; }
+}
