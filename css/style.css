@@ -408,3 +408,14 @@ b { color: var(--gold2); }
 
 /* Danh sách vẽ lại liên tục khi đông người: không chạy hiệu ứng để khỏi nhấp nháy */
 .bet-row.done, .ava-chip { animation: none; }
+
+/* Người chơi mở cùng trình duyệt với màn chiếu: nhân vật to và lấp lánh */
+.rm.me { z-index: 8; }
+.rm.me .rm-fig { transform: scale(1.7); transform-origin: 50% 100%; filter: drop-shadow(0 0 10px #ffe066) drop-shadow(0 0 22px #ffb700); animation: meGlow 1.2s infinite alternate; }
+.rm.me .rm-tag { border-color: var(--gold); box-shadow: 0 0 16px #ffd23a; margin-bottom: 42px; }
+.rm.me::before, .rm.me::after { content: '✨'; position: absolute; font-size: 1.5rem; bottom: 40px; animation: meTwinkle 1s infinite alternate; z-index: 9; }
+.rm.me::before { left: -14px; }
+.rm.me::after { right: -14px; animation-delay: .5s; }
+@keyframes meGlow { to { filter: drop-shadow(0 0 16px #fff3a0) drop-shadow(0 0 32px #ffb700); } }
+@keyframes meTwinkle { from { opacity: .25; transform: scale(.6); } to { opacity: 1; transform: scale(1.2); } }
+.rm.me .rm-tag { margin-bottom: 30px; }

@@ -389,7 +389,7 @@ function mineScene() {
       <div class="hud-box">⏱ <b id="cd"></b>s &nbsp; 💰 <b id="mineSum">0</b></div>
     </div><div class="scene-bar"><div class="cd-bar" id="cdbar"></div></div></div>
     <div class="scene-ground" style="top:${ledges[ledges.length - 1]}%;background:linear-gradient(180deg,${th.dirt[0]},${th.dirt[1]} 55%,${th.dirt[2]})">${decor}</div>
-    <div class="rope-row">${list.map((p, i) => `<div class="rm" id="sm-${p.pid}" data-y="${slot(i).y}" style="left:${slot(i).x}%;top:${slot(i).y}%;--rc:${ropeColor(p.avatar)}">
+    <div class="rope-row">${list.map((p, i) => `<div class="rm${p.pid === localStorage.getItem('daovang_pid_' + room) ? ' me' : ''}" id="sm-${p.pid}" data-y="${slot(i).y}" style="left:${slot(i).x}%;top:${slot(i).y}%;--rc:${ropeColor(p.avatar)}">
       <div class="rm-tag"><span class="sm-crown">👑</span><span class="sm-name">${esc(p.name)}</span><span class="sm-gold">0</span></div>
       <div class="rm-fig">${/^[mp]\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>
       <div class="rm-pulley"></div>
