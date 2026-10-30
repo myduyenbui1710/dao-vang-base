@@ -347,3 +347,15 @@ b { color: var(--gold2); }
 .mine-scene .scene-bar { top: 0; bottom: auto; left: 0; right: 0; height: 8px; border-radius: 0; }
 .mine-scene .scene-hud { padding-top: 14px; }
 .rm .sm-fx { top: 55%; }
+
+/* ---------- 10 màn: trang trí màn chiếu ---------- */
+.scene-ground .dec { position: absolute; transform: translate(-50%, -50%); width: auto; height: auto; max-width: 90px; }
+.scene-ground .dec-emoji { position: absolute; transform: translate(-50%, -50%); font-size: 2.6rem; }
+.walker { position: absolute; font-size: 2.6rem; animation: walk 12s linear infinite alternate; }
+.walker-in { display: inline-block; animation: walkFlip 12s steps(1) infinite; }
+@keyframes walk { from { left: 2%; } to { left: 94%; } }
+@keyframes walkFlip { 0% { transform: scaleX(-1); } 50% { transform: scaleX(1); } 100% { transform: scaleX(-1); } }
+.hook-item.show { display: block; font-size: 2.2rem; line-height: 1; }
+.hook-item img { display: block; max-width: 74px; }
+.hook-item.blast { font-size: 5rem; top: -20px; }
+.rm-fig.boom { animation: stun .9s; }

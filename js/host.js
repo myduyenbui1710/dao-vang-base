@@ -241,8 +241,8 @@ function renderInner(soft = false) {
       break;
     case 'ready':
       Sound.play('tense');
-      body = `<div class="phase-big"><p class="sub">Câu ${state.q + 1}/${QUESTIONS.length}${state.q === LAST ? ' · 🌙 ĐÊM VÀNG x2' : ''}</p>
-        <h1>CHUẨN BỊ KÉO VÀNG!</h1><div class="ready-num pop" id="cd"></div>
+      body = `<div class="phase-big"><p class="sub">Màn ${state.q + 1}/${QUESTIONS.length}${state.q === LAST ? ' · ĐÊM VÀNG x2' : ''}</p>
+        <h1>${THEMES[state.q % THEMES.length].icon} ${THEMES[state.q % THEMES.length].name}</h1><div class="ready-num pop" id="cd"></div>
         <p class="sub">Cầm điện thoại lên, chạm để thả móc kéo vàng 🪝</p></div>`;
       break;
     case 'mine':
@@ -333,19 +333,20 @@ function mineScene() {
     .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
   const n = Math.max(1, list.length);
   const scale = clamp(10 / n, 0.45, 1);
-  const decor = [...Array(30)].map((_, i) => {
-    const x = (i * 37 + 11) % 96 + 2, y = 34 + ((i * 53) % 62), k = i % 9;
-    const cls = k === 0 ? 'gem' : k < 3 ? 'stone' : 'nug';
-    const sz = cls === 'nug' ? 24 + (i * 13) % 46 : 20 + (i * 7) % 20;
-    return `<span class="${cls}" style="left:${x}%;top:${y}%;width:${sz}px;height:${sz * 0.8}px"></span>`;
-  }).join('');
+  const th = THEMES[state.q % THEMES.length];
+  const pos = i => `left:${(i * 37 + 11) % 94 + 3}%;top:${8 + (i * 53) % 84}%`;
+  const types = ['gold_s', 'gold_m', 'gold_s', 'gold_l', 'rock_s', 'gold_m', 'gold_s', 'rock_l', 'bag', 'gold_m'];
+  const urls = {}; types.forEach(t => { urls[t] = urls[t] || Claw.itemURL(state.q, t); });
+  const decor = [...Array(22)].map((_, i) => `<img class="dec" src="${urls[types[i % types.length]]}" style="${pos(i)}" alt="">`).join('')
+    + [0, 1, 2, 3, 4, 5].map(i => `<span class="dec-emoji" style="${pos(i * 4 + 23)}">${i < 2 ? '💣' : i < 3 ? th.special.icon : th.walls[0]}</span>`).join('')
+    + [...Array(6)].map((_, i) => `<span class="walker" style="top:${12 + i * 14}%;animation-duration:${9 + (i * 5) % 9}s;animation-delay:-${i * 2.3}s"><span class="walker-in" style="animation-duration:${9 + (i * 5) % 9}s;animation-delay:-${i * 2.3}s">${th.animals[i % th.animals.length].icon}</span></span>`).join('');
   return `<div class="mine-scene" style="--s:${scale}">
-    <div class="scene-sky"><div class="scene-hud">
+    <div class="scene-sky" style="background:linear-gradient(180deg,${th.sky[0]},${th.sky[1]})"><div class="scene-hud">
       <div class="hud-box">Câu <b>${state.q + 1}</b>/${QUESTIONS.length}${isBetQ() ? ' · 🎲' : ''}</div>
-      <div class="hud-title">🪝 KÉO VÀNG!</div>
+      <div class="hud-title">${th.icon} ${th.name}</div>
       <div class="hud-box">⏱ <b id="cd"></b>s &nbsp; 💰 <b id="mineSum">0</b></div>
     </div><div class="scene-bar"><div class="cd-bar" id="cdbar"></div></div></div>
-    <div class="scene-ground">${decor}</div>
+    <div class="scene-ground" style="background:linear-gradient(180deg,${th.dirt[0]},${th.dirt[1]} 55%,${th.dirt[2]})">${decor}</div>
     <div class="rope-row">${list.map((p, i) => `<div class="rm" id="sm-${p.pid}" style="left:${(i + 0.5) / n * 100}%">
       <div class="rm-tag"><span class="sm-crown">👑</span><span class="sm-name">${esc(p.name)}</span><span class="sm-gold">0</span></div>
       <div class="rm-fig">${/^m\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>
@@ -358,21 +359,28 @@ function mineScene() {
 
 let lastCoinSfx = 0;
 function pullRope(el, ev) {
-  const rope = el.querySelector('.rope'), item = el.querySelector('.hook-item');
-  const depth = Math.round(innerHeight * (0.3 + Math.random() * 0.4));
+  const rope = el.querySelector('.rope'), item = el.querySelector('.hook-item'), fig = el.querySelector('.rm-fig');
+  const depth = Math.round(innerHeight * (0.25 + Math.random() * 0.35));
+  const bad = ev.kind === 'bomb' || ev.kind === 'wall';
   rope.style.setProperty('--depth', depth + 'px');
-  item.className = 'hook-item';
+  item.className = 'hook-item'; item.innerHTML = '';
   rope.classList.remove('pull'); void rope.offsetWidth; rope.classList.add('pull');
-  el.querySelector('.rm-fig').classList.remove('dig'); void el.offsetWidth; el.querySelector('.rm-fig').classList.add('dig');
-  setTimeout(() => { item.className = 'hook-item it-' + (ev.type || ev.kind); }, 500);
+  fig.classList.remove('dig', 'boom'); void fig.offsetWidth; fig.classList.add('dig');
   setTimeout(() => {
-    item.className = 'hook-item';
-    const fx = el.querySelector('.sm-fx');
+    item.className = 'hook-item show' + (ev.kind === 'bomb' ? ' blast' : '');
+    if (ev.kind === 'bomb') { item.textContent = '💥'; Sound.boom(); fig.classList.add('boom'); }
+    else if (ev.kind === 'wall') { item.textContent = '⚡'; Sound.clang(); }
+    else if (ev.icon) item.textContent = ev.icon;
+    else item.innerHTML = `<img src="${Claw.itemURL(state.q, ev.type)}" alt="">`;
+  }, 500);
+  if (bad) setTimeout(() => { item.className = 'hook-item'; item.innerHTML = ''; }, 800);
+  setTimeout(() => {
+    item.className = 'hook-item'; item.innerHTML = '';
     const t = document.createElement('span');
-    t.className = 'sm-plus' + (ev.v >= 300 ? ' big' : '') + (ev.kind === 'rock' ? ' bad' : '');
-    t.textContent = (ev.kind === 'gem' ? '💎 ' : ev.kind === 'rock' ? '🪨 ' : '') + '+' + fmt(ev.v);
-    fx.appendChild(t); setTimeout(() => t.remove(), 1100);
-    if (Date.now() - lastCoinSfx > 150) { lastCoinSfx = Date.now(); ev.kind === 'rock' ? Sound.rock() : ev.v >= 300 ? Sound.big() : Sound.coin(); }
+    t.className = 'sm-plus' + (ev.v >= 300 ? ' big' : '') + (ev.kind === 'rock' || bad ? ' bad' : '');
+    t.textContent = ev.kind === 'bomb' ? '💥 -' + fmt(-ev.v) : ev.kind === 'wall' ? 'Keng!' : '+' + fmt(ev.v);
+    el.querySelector('.sm-fx').appendChild(t); setTimeout(() => t.remove(), 1100);
+    if (!bad && Date.now() - lastCoinSfx > 150) { lastCoinSfx = Date.now(); ev.kind === 'rock' ? Sound.rock() : ev.v >= 300 ? Sound.big() : Sound.coin(); }
   }, 1250);
 }
 

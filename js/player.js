@@ -144,13 +144,13 @@ async function renderInner(soft = false) {
     case 'ready':
       if (changed && navigator.vibrate) navigator.vibrate(150);
       html = `${topBar()}<div class="p-card center"><p class="muted">Câu ${state.q + 1}/${QUESTIONS.length}${last ? ' · 🌙 Đêm vàng x2' : ''}</p>
-        <h1>Chuẩn bị kéo vàng!</h1><div class="ready-num pop" id="cd"></div><div class="ava huge bob">🪝</div></div>`;
+        <h1>Màn ${state.q + 1}: ${THEMES[state.q % THEMES.length].icon} ${THEMES[state.q % THEMES.length].name}</h1><div class="ready-num pop" id="cd"></div><div class="ava huge bob">🪝</div></div>`;
       break;
     case 'mine':
-      html = `<div class="claw-top"><span class="p-phase">⛏️ <span id="cd"></span>s</span>
+      html = `<div class="claw-top"><span class="p-phase">${THEMES[state.q % THEMES.length].icon} <span id="cd"></span>s</span>
         <span class="claw-gold">Túi 💰 <b id="minedNum">${fmt(mine.mined)}</b></span></div>${timer()}
         <canvas id="claw" class="claw-cv"></canvas>
-        <p class="muted center small">Chạm màn hình để thả móc. Vàng to nặng, kéo chậm. Kim cương 💎 nhẹ mà đắt!</p>`;
+        <p class="muted center small">Chạm để thả móc · 💣 trừ ${BOMB_PENALTY} vàng và choáng · Vật cản làm móc bật lại · Thú chạy có thể mang 💎</p>`;
       break;
     case 'topic':
       html = `${topBar()}<div class="p-card center"><p class="muted">Chủ đề câu ${state.q + 1}</p>
@@ -225,13 +225,13 @@ function bind() {
   if (cv) {
     Claw.start(cv, me.avatar, g => {
       if (!state || state.phase !== 'mine') return;
-      mine.mined = Math.min(RULES.MAX_MINE, mine.mined + g.v);
+      mine.mined = clamp(mine.mined + g.v, 0, RULES.MAX_MINE);
       if (g.kind === 'rock') mine.rocks++;
       mine.grabs = (mine.grabs || 0) + 1;
-      mine.ev = { n: mine.grabs, kind: g.kind, type: g.type, v: g.v };
+      mine.ev = { n: mine.grabs, kind: g.kind, type: g.type, v: g.v, icon: g.icon || null };
       mine.dirty = true;
       const el = document.getElementById('minedNum'); if (el) el.textContent = fmt(mine.mined);
-    });
+    }, state.q);
     const tap = e => { e.preventDefault(); if (state && state.phase === 'mine') Claw.tap(); };
     cv.addEventListener('touchstart', tap, { passive: false });
     cv.addEventListener('mousedown', e => { if (!('ontouchstart' in window)) tap(e); });
