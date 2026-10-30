@@ -405,3 +405,6 @@ b { color: var(--gold2); }
   .claw-cv + p { display: none; }
 }
 .claw-rank { font-weight: 800; color: #fff; background: rgba(255,255,255,.12); border-radius: 999px; padding: 1px 12px; font-size: 1.05rem; }
+
+/* Danh sách vẽ lại liên tục khi đông người: không chạy hiệu ứng để khỏi nhấp nháy */
+.bet-row.done, .ava-chip { animation: none; }
