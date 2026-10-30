@@ -375,3 +375,13 @@ b { color: var(--gold2); }
 .mine-scene .scene-ground { inset: 42% 0 0 0; }
 .rope-row { height: 42%; }
 .hud-title { text-shadow: 0 3px 0 #3a2208, 0 0 10px #000a, 2px 2px 0 #3a2208, -2px 2px 0 #3a2208; }
+
+/* ---------- 2 hàng thợ mỏ, mỗi người một màu dây ---------- */
+.rope-row { height: 100%; pointer-events: none; }
+.rm { bottom: auto; transform: translate(-50%, -100%); }
+.rm-tag { border-top: 5px solid var(--rc); }
+.rm-pulley { border-color: var(--rc); }
+.rope-line { width: 5px; left: -2.5px; background: var(--rc); box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+.claw-hook { border-color: var(--rc); filter: drop-shadow(0 0 1px #000); }
+.ledge { position: absolute; left: 0; right: 0; height: 12px; z-index: 3; background: repeating-linear-gradient(90deg, #8a5a26 0 46px, #6e4518 46px 50px); border-top: 2px solid #b98a4a; border-bottom: 3px solid #3f270c; }
+.rope { z-index: 5; }

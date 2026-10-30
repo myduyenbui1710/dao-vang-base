@@ -18,9 +18,15 @@ const MINER_IDS = MINERS.map((_, i) => 'm' + i);
 const isFace = id => /^p\d+$/.test(String(id)) && typeof FACES !== 'undefined' && !!FACES[+String(id).slice(1)];
 let faceClipN = 0;
 
+// Mỗi nhân vật một màu riêng cho dây và áo, để nhìn là biết dây của ai
+function ropeColor(id) {
+  const n = (+String(id).slice(1) || 0) + (String(id)[0] === 'm' ? 25 : 0);
+  return `hsl(${Math.round(n * 137.5) % 360}, 90%, ${[52, 40, 66][n % 3]}%)`;
+}
+
 function minerSVG(id) {
   const idx = +String(id).slice(1) || 0;
-  const m = isFace(id) ? MINERS[idx % MINERS.length] : (MINERS[idx] || MINERS[0]);
+  const m = { ...(isFace(id) ? MINERS[idx % MINERS.length] : (MINERS[idx] || MINERS[0])), shirt: ropeColor(id) };
   const hair = {
     short: `<path d="M38 30 q12 -8 26 0 v6 h-26z" fill="${m.hair}"/>`,
     long: `<path d="M36 30 q14 -10 28 0 v24 q-3 4 -6 0 v-18 h-16 v18 q-3 4 -6 0z" fill="${m.hair}"/>`,
@@ -47,25 +53,32 @@ function minerSVG(id) {
     <circle cx="66" cy="23" r="4.5" fill="#fff59d" stroke="#bfa000" stroke-width="1.5"/>
   </g>`;
   return `<svg class="mfig" viewBox="0 0 110 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <ellipse cx="52" cy="116" rx="26" ry="4" fill="rgba(0,0,0,.25)"/>
-  <g class="legs">
-    <rect x="40" y="82" width="10" height="26" rx="4" fill="${m.pants}"/>
-    <rect x="55" y="82" width="10" height="26" rx="4" fill="${m.pants}"/>
-    <path d="M37 106 h15 v7 h-17 q-2 -7 2 -7z" fill="#3b2414"/>
-    <path d="M53 106 h15 q4 0 2 7 h-17z" fill="#3b2414"/>
+  <ellipse cx="52" cy="115" rx="27" ry="4" fill="rgba(0,0,0,.28)"/>
+  <g class="legs" fill="none" stroke-linecap="round">
+    <path d="M45 84 Q43 95 43 106" stroke="${m.pants}" stroke-width="12"/>
+    <path d="M59 84 Q61 95 61 106" stroke="${m.pants}" stroke-width="12"/>
+    <path d="M41 88 v14 M63 88 v14" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
   </g>
-  <rect x="30" y="56" width="9" height="24" rx="4.5" fill="${m.shirt}" transform="rotate(14 34 58)"/>
-  <circle cx="30" cy="80" r="5" fill="${m.skin}"/>
-  <rect x="36" y="52" width="33" height="36" rx="10" fill="${m.shirt}"/>
-  <path d="M41 54 v32 M64 54 v32" stroke="${m.pants}" stroke-width="3.5"/>
-  <rect x="36" y="80" width="33" height="7" rx="3" fill="#5d4037"/>
-  <rect x="49" y="80" width="7" height="7" rx="1.5" fill="#ffc400"/>
+  <path d="M37 105 h13 v7 h-17 q-1 -5 4 -7z" fill="#5d4037"/><rect x="32" y="111" width="19" height="3.5" rx="1.7" fill="#2a1a10"/>
+  <path d="M54 105 h13 q5 2 4 7 h-17z" fill="#5d4037"/><rect x="53" y="111" width="19" height="3.5" rx="1.7" fill="#2a1a10"/>
+  <path d="M37 58 L30 70" stroke="${m.shirt}" stroke-width="10" stroke-linecap="round"/>
+  <path d="M30 70 L36 81" stroke="${m.skin}" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="37" cy="82" r="5.4" fill="#f2b33d" stroke="#b57f16" stroke-width="1"/>
+  <path d="M36 57 q0 -7 8 -7 h16 q8 0 8 7 l-2 28 h-28z" fill="${m.shirt}"/>
+  <path d="M38 73 h28 l1 14 h-30z" fill="${m.pants}"/>
+  <rect x="42" y="60" width="20" height="15" rx="3" fill="${m.pants}"/>
+  <path d="M44 61 L41 51 M60 61 L63 51" stroke="${m.pants}" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="47" y="64" width="10" height="6.5" rx="1.5" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
+  <circle cx="44.5" cy="62" r="1.3" fill="#ffc400"/><circle cx="59.5" cy="62" r="1.3" fill="#ffc400"/>
   ${headSVG}
   <g class="arm">
-    <rect x="83.5" y="18" width="5" height="60" rx="2.5" fill="#8d5a2b"/>
-    <path d="M69 25 q17 -15 34 0 q-17 -6 -34 0z" fill="#9aa4ad" stroke="#5f6a73" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M65 58 L85 66" stroke="${m.shirt}" stroke-width="9" stroke-linecap="round"/>
-    <circle cx="86" cy="66" r="5" fill="${m.skin}"/>
+    <path d="M79 84 L92 22" stroke="#8d5a2b" stroke-width="5" stroke-linecap="round"/>
+    <path d="M79 84 L92 22" stroke="rgba(255,255,255,.2)" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M75 29 Q92 8 108 26 Q92 17 75 29z" fill="#aab4bd" stroke="#5f6a73" stroke-width="2" stroke-linejoin="round"/>
+    <rect x="88" y="16" width="8" height="8" rx="2" fill="#5f6a73"/>
+    <path d="M66 57 L76 66" stroke="${m.shirt}" stroke-width="10" stroke-linecap="round"/>
+    <path d="M76 66 L85 58" stroke="${m.skin}" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="86" cy="57" r="5.8" fill="#f2b33d" stroke="#b57f16" stroke-width="1"/>
   </g>
 </svg>`;
 }

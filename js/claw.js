@@ -109,7 +109,7 @@ function drawBag(ctx, r) {
 }
 
 const Claw = (() => {
-  let cv, ctx, W, H, dpr, theme, items, walls, animals, hook, raf, last, onGrab, img, floats, booms, shake, running = false;
+  let rope, cv, ctx, W, H, dpr, theme, items, walls, animals, hook, raf, last, onGrab, img, floats, booms, shake, running = false;
   const O = () => ({ x: W / 2, y: 64 });
   const SKY = 90;
 
@@ -143,7 +143,7 @@ const Claw = (() => {
 
   function start(canvas, avatarId, cb, q = 0) {
     stop();
-    cv = canvas; onGrab = cb; theme = THEMES[q % THEMES.length];
+    cv = canvas; onGrab = cb; theme = THEMES[q % THEMES.length]; rope = ropeColor(avatarId);
     dpr = window.devicePixelRatio || 1;
     const rect = cv.getBoundingClientRect();
     W = rect.width; H = rect.height;
@@ -266,10 +266,11 @@ const Claw = (() => {
     ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x - 14, o.y - 8, 28, 10);
     ctx.fillStyle = '#9aa4ad'; ctx.beginPath(); ctx.arc(o.x, o.y - 3, 7, 0, Math.PI * 2); ctx.fill();
     const p = tip();
-    ctx.strokeStyle = hook.stun > 0 ? '#111' : '#3b2414'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 5.5; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    ctx.strokeStyle = hook.stun > 0 ? '#111' : rope; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(p.x, p.y); ctx.stroke();
     if (hook.caught) drawItem(hook.caught);
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(-hook.a);
-    ctx.strokeStyle = '#8a97a0'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.strokeStyle = rope; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-12, 4, -9, 14); ctx.moveTo(0, 0); ctx.quadraticCurveTo(12, 4, 9, 14); ctx.stroke();
     ctx.restore();
     booms = booms.filter(b => (b.t += dt) < 0.6);

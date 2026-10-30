@@ -332,7 +332,15 @@ function mineScene() {
   const list = Object.keys(players).map(pid => ({ pid, ...players[pid] }))
     .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
   const n = Math.max(1, list.length);
-  const scale = clamp(10 / n, 0.45, 1);
+  // Trên 10 người chia 2 hàng so le để dây hàng trên thả xuống giữa hai người hàng dưới
+  const twoRows = n > 10, topN = Math.ceil(n / 2);
+  const ledges = twoRows ? [32, 52] : [42];
+  const scale = twoRows ? clamp(innerHeight / 720 * 0.72, 0.6, 1.2) : clamp(10 / n, 0.6, 1);
+  const slot = i => {
+    if (!twoRows) return { x: (i + 0.5) / n * 100, y: ledges[0] };
+    if (i < topN) return { x: 3 + (i + 0.25) / topN * 94, y: ledges[0] };
+    return { x: 3 + (i - topN + 0.75) / (n - topN) * 94, y: ledges[1] };
+  };
   const th = THEMES[state.q % THEMES.length];
   const pos = i => `left:${(i * 37 + 11) % 94 + 3}%;top:${8 + (i * 53) % 84}%`;
   const types = ['gold_s', 'gold_m', 'gold_s', 'gold_l', 'rock_s', 'gold_m', 'gold_s', 'rock_l', 'bag', 'gold_m'];
@@ -341,13 +349,13 @@ function mineScene() {
     + [0, 1, 2, 3, 4, 5].map(i => `<span class="dec-emoji" style="${pos(i * 4 + 23)}">${i < 2 ? '💣' : i < 3 ? th.special.icon : th.walls[0]}</span>`).join('')
     + [...Array(6)].map((_, i) => `<span class="walker" style="top:${12 + i * 14}%;animation-duration:${9 + (i * 5) % 9}s;animation-delay:-${i * 2.3}s"><span class="walker-in" style="animation-duration:${9 + (i * 5) % 9}s;animation-delay:-${i * 2.3}s">${th.animals[i % th.animals.length].icon}</span></span>`).join('');
   return `<div class="mine-scene" style="--s:${scale}">
-    <div class="scene-sky" style="background:linear-gradient(180deg,${th.sky[0]},${th.sky[1]})"><div class="scene-hud">
+    <div class="scene-sky" style="height:${ledges[ledges.length - 1]}%;background:linear-gradient(180deg,${th.sky[0]},${th.sky[1]})"><div class="scene-hud">
       <div class="hud-box">Câu <b>${state.q + 1}</b>/${QUESTIONS.length}${isBetQ() ? ' · 🎲' : ''}</div>
       <div class="hud-title">${th.icon} ${th.name}</div>
       <div class="hud-box">⏱ <b id="cd"></b>s &nbsp; 💰 <b id="mineSum">0</b></div>
     </div><div class="scene-bar"><div class="cd-bar" id="cdbar"></div></div></div>
-    <div class="scene-ground" style="background:linear-gradient(180deg,${th.dirt[0]},${th.dirt[1]} 55%,${th.dirt[2]})">${decor}</div>
-    <div class="rope-row">${list.map((p, i) => `<div class="rm" id="sm-${p.pid}" style="left:${(i + 0.5) / n * 100}%">
+    ${twoRows ? `<div class="ledge" style="top:${ledges[0]}%"></div>` : ''}<div class="scene-ground" style="top:${ledges[ledges.length - 1]}%;background:linear-gradient(180deg,${th.dirt[0]},${th.dirt[1]} 55%,${th.dirt[2]})">${decor}</div>
+    <div class="rope-row">${list.map((p, i) => `<div class="rm" id="sm-${p.pid}" data-y="${slot(i).y}" style="left:${slot(i).x}%;top:${slot(i).y}%;--rc:${ropeColor(p.avatar)}">
       <div class="rm-tag"><span class="sm-crown">👑</span><span class="sm-name">${esc(p.name)}</span><span class="sm-gold">0</span></div>
       <div class="rm-fig">${/^[mp]\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>
       <div class="rm-pulley"></div>
@@ -360,7 +368,8 @@ function mineScene() {
 let lastCoinSfx = 0;
 function pullRope(el, ev) {
   const rope = el.querySelector('.rope'), item = el.querySelector('.hook-item'), fig = el.querySelector('.rm-fig');
-  const depth = Math.round(innerHeight * (0.25 + Math.random() * 0.35));
+  const room = innerHeight * (1 - (+el.dataset.y || 42) / 100);
+  const depth = Math.round(room * (0.35 + Math.random() * 0.55));
   const bad = ev.kind === 'bomb' || ev.kind === 'wall';
   rope.style.setProperty('--depth', depth + 'px');
   item.className = 'hook-item'; item.innerHTML = '';
