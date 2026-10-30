@@ -332,15 +332,10 @@ function mineScene() {
   const list = Object.keys(players).map(pid => ({ pid, ...players[pid] }))
     .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
   const n = Math.max(1, list.length);
-  // Trên 10 người chia 2 hàng so le để dây hàng trên thả xuống giữa hai người hàng dưới
-  const twoRows = n > 10, topN = Math.ceil(n / 2);
-  const ledges = twoRows ? [32, 52] : [42];
-  const scale = twoRows ? clamp(innerHeight / 720 * 0.72, 0.6, 1.2) : clamp(10 / n, 0.6, 1);
-  const slot = i => {
-    if (!twoRows) return { x: (i + 0.5) / n * 100, y: ledges[0] };
-    if (i < topN) return { x: 3 + (i + 0.25) / topN * 94, y: ledges[0] };
-    return { x: 3 + (i - topN + 0.75) / (n - topN) * 94, y: ledges[1] };
-  };
+  // Luôn 1 hàng; đông người thì nhân vật thu nhỏ để vừa màn hình
+  const ledges = [n > 10 ? 30 : 42];
+  const scale = clamp(10 / n, 0.4, 1);
+  const slot = i => ({ x: 1 + (i + 0.5) / n * 98, y: ledges[0] });
   const th = THEMES[state.q % THEMES.length];
   const pos = i => `left:${(i * 37 + 11) % 94 + 3}%;top:${8 + (i * 53) % 84}%`;
   const types = ['gold_s', 'gold_m', 'gold_s', 'gold_l', 'rock_s', 'gold_m', 'gold_s', 'rock_l', 'bag', 'gold_m'];
@@ -354,7 +349,7 @@ function mineScene() {
       <div class="hud-title">${th.icon} ${th.name}</div>
       <div class="hud-box">⏱ <b id="cd"></b>s &nbsp; 💰 <b id="mineSum">0</b></div>
     </div><div class="scene-bar"><div class="cd-bar" id="cdbar"></div></div></div>
-    ${twoRows ? `<div class="ledge" style="top:${ledges[0]}%"></div>` : ''}<div class="scene-ground" style="top:${ledges[ledges.length - 1]}%;background:linear-gradient(180deg,${th.dirt[0]},${th.dirt[1]} 55%,${th.dirt[2]})">${decor}</div>
+    <div class="scene-ground" style="top:${ledges[ledges.length - 1]}%;background:linear-gradient(180deg,${th.dirt[0]},${th.dirt[1]} 55%,${th.dirt[2]})">${decor}</div>
     <div class="rope-row">${list.map((p, i) => `<div class="rm" id="sm-${p.pid}" data-y="${slot(i).y}" style="left:${slot(i).x}%;top:${slot(i).y}%;--rc:${ropeColor(p.avatar)}">
       <div class="rm-tag"><span class="sm-crown">👑</span><span class="sm-name">${esc(p.name)}</span><span class="sm-gold">0</span></div>
       <div class="rm-fig">${/^[mp]\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>

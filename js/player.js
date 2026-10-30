@@ -28,6 +28,7 @@ function askRoom() {
 
 async function boot() {
   if (!room) return askRoom();
+  app.innerHTML = '<div class="p-card center"><p class="muted">Đang vào phòng…</p></div>';
   const st = await DB.get(R('state'));
   if (!st) { app.innerHTML = `<div class="p-card center"><h2>Không tìm thấy phòng ${esc(room)}</h2><p class="muted">Kiểm tra lại mã phòng trên màn hình chiếu.</p><button class="btn btn-ghost" onclick="location.search=''">Nhập lại</button></div>`; return; }
   pid = localStorage.getItem('daovang_pid_' + room);

@@ -385,3 +385,4 @@ b { color: var(--gold2); }
 .claw-hook { border-color: var(--rc); filter: drop-shadow(0 0 1px #000); }
 .ledge { position: absolute; left: 0; right: 0; height: 12px; z-index: 3; background: repeating-linear-gradient(90deg, #8a5a26 0 46px, #6e4518 46px 50px); border-top: 2px solid #b98a4a; border-bottom: 3px solid #3f270c; }
 .rope { z-index: 5; }
+.rm-tag { padding: 1px 4px; }

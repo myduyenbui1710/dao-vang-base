@@ -110,8 +110,8 @@ function drawBag(ctx, r) {
 
 const Claw = (() => {
   let rope, cv, ctx, W, H, dpr, theme, items, walls, animals, hook, raf, last, onGrab, img, floats, booms, shake, running = false;
-  const O = () => ({ x: W / 2, y: 64 });
-  const SKY = 90;
+  const O = () => ({ x: W / 2, y: 104 });
+  const SKY = 130;
 
   function occupied(x, y, r) {
     return items.concat(walls, animals).every(o => Math.hypot(o.x - x, o.y - y) > (o.r || 16) + r + 8);
@@ -236,6 +236,25 @@ const Claw = (() => {
     raf = requestAnimationFrame(loop);
   }
 
+  // Nhân vật của chính người chơi: to hơn, có vầng sáng và sao lấp lánh
+  function drawMe(o) {
+    const t = performance.now() / 1000, cx = o.x - 72, cy = 64;
+    const R = 68 + Math.sin(t * 3) * 5;
+    const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, R);
+    g.addColorStop(0, 'rgba(255,240,150,.95)'); g.addColorStop(0.55, 'rgba(255,205,50,.45)'); g.addColorStop(1, 'rgba(255,205,50,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+    if (img.complete) ctx.drawImage(img, cx - 55, 2, 110, 120);
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2 + t * 0.7, q = 58 + (i % 2) * 8;
+      const k = 0.5 + 0.5 * Math.sin(t * 5 + i * 1.7);
+      ctx.save(); ctx.translate(cx + Math.cos(a) * q, cy + Math.sin(a) * q); ctx.rotate(t + i); ctx.scale(k, k);
+      ctx.fillStyle = '#fff8c4'; ctx.shadowColor = '#ffd23a'; ctx.shadowBlur = 8;
+      ctx.beginPath();
+      for (let j = 0; j < 8; j++) { const r = j % 2 ? 2 : 8, b = j / 8 * Math.PI * 2; ctx.lineTo(Math.cos(b) * r, Math.sin(b) * r); }
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+  }
+
   function drawItem(o) {
     ctx.save(); ctx.translate(o.x, o.y);
     if (o.kind === 'gold') drawTreasure(ctx, theme, o.r, o.seed);
@@ -262,7 +281,7 @@ const Claw = (() => {
     items.forEach(drawItem);
     animals.forEach(drawItem);
     const o = O();
-    if (img.complete) ctx.drawImage(img, o.x - 92, 0, 80, 87);
+    drawMe(o);
     ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x - 14, o.y - 8, 28, 10);
     ctx.fillStyle = '#9aa4ad'; ctx.beginPath(); ctx.arc(o.x, o.y - 3, 7, 0, Math.PI * 2); ctx.fill();
     const p = tip();
@@ -282,7 +301,7 @@ const Claw = (() => {
       ctx.globalAlpha = 1;
     });
     if (hook.stun > 0) {
-      ctx.save(); ctx.translate(o.x - 40, 12 + Math.sin(hook.stun * 12) * 3); drawEmoji(ctx, '💫', 22); ctx.restore();
+      ctx.save(); ctx.translate(o.x - 72, 8 + Math.sin(hook.stun * 12) * 3); drawEmoji(ctx, '💫', 26); ctx.restore();
     }
     floats = floats.filter(f => (f.life -= dt) > 0);
     floats.forEach(f => {
