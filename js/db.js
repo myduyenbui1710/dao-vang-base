@@ -53,6 +53,12 @@ const DB = (() => {
       if (mode === 'firebase') return fb.ref(path).update(obj);
       return localWrite(t => Object.keys(obj).forEach(k => setAt(t, path + '/' + k, obj[k])));
     },
+    // Giành quyền: ai ghi trước thì được, trả về true nếu mình thắng
+    claim(path, v) {
+      if (mode === 'firebase') return fb.ref(path).transaction(cur => (cur === null ? v : undefined)).then(r => r.committed);
+      if (getAt(loadTree(), path) != null) return Promise.resolve(false);
+      return localWrite(t => setAt(t, path, v)).then(() => true);
+    },
     get(path) {
       if (mode === 'firebase') return fb.ref(path).once('value').then(s => s.val());
       const v = getAt(loadTree(), path); return Promise.resolve(clone(v === undefined ? null : v));

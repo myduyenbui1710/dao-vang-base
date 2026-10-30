@@ -161,9 +161,9 @@ async function renderInner(soft = false) {
       break;
     case 'mine':
       html = `<div class="claw-top"><span class="p-phase">${THEMES[state.q % THEMES.length].icon} <span id="cd"></span>s</span>
-        <span class="claw-gold">Túi 💰 <b id="minedNum">${fmt(mine.mined)}</b></span></div>${timer()}
+        <span class="claw-rank" id="clawRank"></span><span class="claw-gold">💰 <b id="minedNum">${fmt(mine.mined)}</b></span></div>${timer()}
         <canvas id="claw" class="claw-cv"></canvas>
-        <p class="muted center small">Chạm để thả móc · 💣 trừ ${BOMB_PENALTY} vàng và choáng · Vật cản làm móc bật lại · Thú chạy có thể mang 💎</p>`;
+        <p class="muted center small">Cả phòng dùng chung một mỏ, ai móc trước được trước · 💣 trừ ${BOMB_PENALTY} vàng và choáng</p>`;
       break;
     case 'topic':
       html = `${topBar()}<div class="p-card center"><p class="muted">Chủ đề câu ${state.q + 1}</p>
@@ -236,15 +236,24 @@ async function renderInner(soft = false) {
 function bind() {
   const cv = document.getElementById('claw');
   if (cv) {
-    Claw.start(cv, me.avatar, g => {
-      if (!state || state.phase !== 'mine') return;
-      mine.mined = clamp(mine.mined + g.v, 0, RULES.MAX_MINE);
-      if (g.kind === 'rock') mine.rocks++;
-      mine.grabs = (mine.grabs || 0) + 1;
-      mine.ev = { n: mine.grabs, kind: g.kind, type: g.type, v: g.v, icon: g.icon || null };
-      mine.dirty = true;
-      const el = document.getElementById('minedNum'); if (el) el.textContent = fmt(mine.mined);
-    }, state.q);
+    const q = state.q;
+    Claw.start(cv, {
+      me: pid, avatar: me.avatar, q, seed: room + ':' + q, players: () => players,
+      net: {
+        claim: (id, data) => DB.claim(R(`claims/${q}/${id}`), data),
+        onClaims: cb => DB.on(R(`claims/${q}`), v => cb(v || {})),
+      },
+      onRank: (rank, total) => { const el = document.getElementById('clawRank'); if (el) el.textContent = `Hạng ${rank}/${total}`; },
+      onGrab: g => {
+        if (!state || state.phase !== 'mine') return;
+        mine.mined = clamp(mine.mined + g.v, 0, RULES.MAX_MINE);
+        if (g.kind === 'rock') mine.rocks++;
+        mine.grabs = (mine.grabs || 0) + 1;
+        mine.ev = { n: mine.grabs, kind: g.kind, type: g.type, v: g.v, icon: g.icon || null };
+        mine.dirty = true;
+        const el = document.getElementById('minedNum'); if (el) el.textContent = fmt(mine.mined);
+      },
+    });
     // pointerdown nhận cả cảm ứng lẫn chuột, kể cả laptop màn cảm ứng
     cv.addEventListener('pointerdown', e => { e.preventDefault(); Sound.unlock(); if (state && state.phase === 'mine') Claw.tap(); });
   } else Claw.stop();

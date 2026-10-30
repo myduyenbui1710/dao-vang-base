@@ -109,91 +109,172 @@ function drawBag(ctx, r) {
 }
 
 const Claw = (() => {
-  let rope, cv, ctx, W, H, dpr, theme, items, walls, animals, hook, raf, last, onGrab, img, floats, booms, shake, running = false;
-  const O = () => ({ x: W / 2, y: 104 });
-  const SKY = 130;
+  const SKY = 164, ACTIVE = 14, ANIMALS = 3;
+  let cv, ctx, W, H, dpr, theme, pool, walls, aniPool, items, animals, hook, raf, last, opts, img, floats, booms, shake, running = false;
+  let claimed, totals, firstSnap, unsub, opps, faceImgs, rope, meId;
+  const O = () => ({ x: W / 2, y: 112 });
 
-  function occupied(x, y, r) {
-    return items.concat(walls, animals).every(o => Math.hypot(o.x - x, o.y - y) > (o.r || 16) + r + 8);
+  // Bộ sinh số theo seed: mọi điện thoại trong phòng tạo ra đúng một mỏ giống nhau
+  function seeded(str) {
+    let h = 1779033703;
+    for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 3432918353), h = h << 13 | h >>> 19;
+    return () => { h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
   }
-  function freeSpot(r) {
-    for (let k = 0; k < 30; k++) {
-      const x = r + 6 + Math.random() * (W - 2 * r - 12), y = SKY + r + 6 + Math.random() * Math.max(1, H - SKY - 2 * r - 12);
-      if (occupied(x, y, r)) return { x, y };
+  function place(o) { o.x = o.r + 6 + o.nx * (W - 2 * o.r - 12); o.y = SKY + o.r + 6 + o.ny * (H - SKY - 2 * o.r - 12); return o; }
+
+  function buildField(seed) {
+    const rnd = seeded(seed), recent = [];
+    const spot = () => {
+      let nx, ny;
+      for (let k = 0; k < 25; k++) {
+        nx = rnd(); ny = rnd();
+        if (recent.every(p => Math.hypot((p[0] - nx) * 0.65, p[1] - ny) > 0.14)) break;
+      }
+      recent.push([nx, ny]); if (recent.length > ACTIVE + 3) recent.splice(3, 1);
+      return { nx, ny };
+    };
+    walls = [0, 1, 2].map(i => place({ ...spot(), r: 20, icon: theme.walls[i % theme.walls.length] }));
+    pool = [];
+    const first = ['bomb', 'bomb', 'special'];
+    for (let i = 0; i < 150; i++) {
+      let name = first[i] || ITEM_POOL[Math.floor(rnd() * ITEM_POOL.length)];
+      // Giữ bom thưa: trong 10 món gần nhất chỉ có tối đa 1 quả (không tính 2 quả đầu)
+      if (name === 'bomb' && i > 1 && pool.slice(Math.max(2, i - 10)).some(o => o.kind === 'bomb')) name = 'gold_s';
+      let t;
+      if (name === 'special') t = { r: 15, v: theme.special.v, w: 1.15, kind: 'special', icon: theme.special.icon };
+      else if (name === 'bomb') t = { r: 16, v: -BOMB_PENALTY, w: 1, kind: 'bomb', icon: '💣' };
+      else t = ITEM_TYPES[name];
+      const v = t.kind === 'bag' ? [20, 60, 150, 300, 600][Math.floor(rnd() * 5)] : t.v;
+      pool.push(place({ ...t, v, type: name, id: 'i' + i, ...spot(), seed: rnd() }));
     }
-    return null;
+    aniPool = [];
+    for (let i = 0; i < 40; i++) {
+      const a = theme.animals[Math.floor(rnd() * theme.animals.length)], gem = rnd() < 0.3;
+      aniPool.push({ ...a, kind: 'animal', type: 'animal', id: 'a' + i, r: 17, w: gem ? 1.3 : 1.6, gem, v: gem ? 500 : a.v,
+        y: SKY + 30 + rnd() * (H - SKY - 60), ph: rnd() * 2, seed: rnd() });
+    }
   }
-  function makeItem(typeName) {
-    const name = typeName || ITEM_POOL[Math.floor(Math.random() * ITEM_POOL.length)];
-    let t;
-    if (name === 'special') t = { r: 15, v: theme.special.v, w: 1.15, kind: 'special', icon: theme.special.icon };
-    else if (name === 'bomb') t = { r: 16, v: -BOMB_PENALTY, w: 1, kind: 'bomb', icon: '💣' };
-    else t = ITEM_TYPES[name];
-    const p = freeSpot(t.r);
-    return p ? { ...t, type: name, ...p, seed: Math.random() } : null;
+  function refresh() {
+    items = pool.filter(o => !claimed[o.id]).slice(0, ACTIVE);
+    animals = aniPool.filter(o => !claimed[o.id]).slice(0, ANIMALS);
   }
-  function addItem(typeName) { const it = makeItem(typeName); if (it) items.push(it); }
-  function makeAnimal() {
-    const a = theme.animals[Math.floor(Math.random() * theme.animals.length)];
-    const y = SKY + 50 + Math.random() * (H - SKY - 90);
-    const gem = Math.random() < 0.3;
-    return { ...a, kind: 'animal', type: 'animal', r: 17, w: gem ? 1.3 : 1.6, x: 20 + Math.random() * (W - 40), y,
-      dir: Math.random() < 0.5 ? -1 : 1, gem, v: gem ? 500 : a.v, sp: a.sp * (0.8 + Math.random() * 0.4), seed: Math.random() };
+  // Con vật chạy theo giờ chung nên trên mọi máy đều ở cùng một chỗ
+  function moveAnimals() {
+    const span = W - 36, t = DB.now() / 1000;
+    animals.forEach(a => {
+      const p = (t * a.sp / span + a.ph) % 2;
+      a.x = 18 + span * (p < 1 ? p : 2 - p); a.dir = p < 1 ? 1 : -1;
+    });
   }
 
-  function start(canvas, avatarId, cb, q = 0) {
+  function loadImg(id) {
+    if (faceImgs[id]) return faceImgs[id];
+    const im = new Image();
+    im.src = isFace(id) ? FACES[+String(id).slice(1)] : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(minerSVG(id));
+    return (faceImgs[id] = im);
+  }
+  function layoutOpps() {
+    const ps = opts.players() || {};
+    const list = Object.keys(ps).filter(p => p !== meId).sort((a, b) => (ps[a].joinedAt || 0) - (ps[b].joinedAt || 0));
+    const old = opps || {};
+    opps = {};
+    list.forEach((pid, i) => {
+      const x = (i + 0.5) / list.length * (W - 16) + 8;
+      opps[pid] = { ...(old[pid] || {}), pid, x, y: i % 2 ? 142 : 122, color: ropeColor(ps[pid].avatar), avatar: ps[pid].avatar, ph: i * 1.3 };
+    });
+  }
+  function report() {
+    const mine = totals[meId] || 0;
+    const ps = opts.players() || {};
+    const rank = 1 + Object.keys(ps).filter(p => p !== meId && (totals[p] || 0) > mine).length;
+    opts.onRank && opts.onRank(rank, Object.keys(ps).length);
+  }
+  function onClaims(all) {
+    totals = {};
+    Object.keys(all).forEach(id => {
+      const c = all[id], prev = claimed[id];
+      if (c.p && c.p !== 'boom') totals[c.p] = (totals[c.p] || 0) + (c.v || 0);
+      if (prev && prev.seen && prev.p === c.p) return;
+      claimed[id] = { ...c, seen: true };
+      if (firstSnap || c.p === meId) return;
+      // Mình đang móc đúng món đó mà bị người khác lấy trước
+      if (hook.caught && hook.caught.id === id) loseCaught();
+      if (c.p === 'boom') return;
+      const it = pool.concat(aniPool).find(o => o.id === id), op = opps[c.p];
+      if (it && op) {
+        if (it.kind === 'bomb') { booms.push({ x: it.x, y: it.y, t: 0 }); Sound.boom(); }
+        const x = it.kind === 'animal' ? (it.x || W / 2) : it.x;
+        op.anim = { t: 0, x, y: it.y, item: it.kind === 'bomb' ? null : { ...it, x, dir: it.dir || 1 }, v: c.v, kind: it.kind };
+      }
+    });
+    firstSnap = false;
+    refresh(); report();
+  }
+  function loseCaught() {
+    hook.caught = null;
+    floats.push({ text: 'Hụt!', x: O().x + 34, y: O().y - 20, life: 1, bad: true });
+    Sound.clang();
+  }
+
+  function start(canvas, o) {
     stop();
-    cv = canvas; onGrab = cb; theme = THEMES[q % THEMES.length]; rope = ropeColor(avatarId);
+    cv = canvas; opts = o; meId = o.me; theme = THEMES[o.q % THEMES.length]; rope = ropeColor(o.avatar);
     dpr = window.devicePixelRatio || 1;
     const rect = cv.getBoundingClientRect();
     W = rect.width; H = rect.height;
     cv.width = W * dpr; cv.height = H * dpr;
     ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    items = []; walls = []; animals = []; floats = []; booms = []; shake = 0;
-    for (let i = 0; i < 3; i++) {
-      const p = freeSpot(20);
-      if (p) walls.push({ ...p, r: 20, icon: theme.walls[i % theme.walls.length] });
-    }
-    for (let i = 0; i < 3; i++) animals.push(makeAnimal());
-    const n = Math.round((W * H) / 14000);
-    addItem('bomb'); addItem('bomb'); addItem('special');
-    for (let i = 0; i < n; i++) addItem();
+    floats = []; booms = []; shake = 0; claimed = {}; totals = {}; firstSnap = true; faceImgs = {}; opps = {};
+    buildField(o.seed); refresh(); layoutOpps();
     hook = { state: 'swing', t: Math.random() * 6, a: 0, L: 34, caught: null, stun: 0 };
     img = new Image();
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(minerSVG(avatarId).replace('<svg class="mfig"', '<svg'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(minerSVG(o.avatar).replace('<svg class="mfig"', '<svg'));
+    unsub = o.net.onClaims(onClaims);
     running = true; last = performance.now();
     raf = requestAnimationFrame(loop);
   }
-
-  function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = null; }
-
+  function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = null; if (unsub) unsub(); unsub = null; }
   function tap() {
     if (running && hook.state === 'swing' && hook.stun <= 0) { hook.state = 'out'; return true; }
     return false;
   }
-
   function tip() { const o = O(); return { x: o.x + Math.sin(hook.a) * hook.L, y: o.y + Math.cos(hook.a) * hook.L }; }
+  const award = g => {
+    totals[meId] = totals[meId] || 0; // tổng thật cập nhật khi tín hiệu từ máy chủ về
+    opts.onGrab && opts.onGrab(g);
+  };
 
-  function explode(p) {
+  function explode(p, bomb) {
     booms.push({ x: p.x, y: p.y, t: 0 });
-    shake = 0.45; hook.stun = BOMB_STUN; hook.state = 'in'; hook.caught = null;
-    const lost = items.filter(o => Math.hypot(o.x - p.x, o.y - p.y) < BOMB_RADIUS).length;
-    items = items.filter(o => Math.hypot(o.x - p.x, o.y - p.y) >= BOMB_RADIUS);
-    for (let i = 0; i < lost; i++) addItem();
-    floats.push({ text: '💥 -' + BOMB_PENALTY, x: O().x + 34, y: O().y, life: 1.3, big: true, bad: true });
+    shake = 0.45; hook.stun = BOMB_STUN;
+    items.filter(o => o !== bomb && Math.hypot(o.x - p.x, o.y - p.y) < BOMB_RADIUS).forEach(o => {
+      claimed[o.id] = { p: 'boom' }; opts.net.claim(o.id, { p: 'boom', v: 0 });
+    });
+    refresh();
+    floats.push({ text: '💥 -' + BOMB_PENALTY, x: O().x + 34, y: O().y - 10, life: 1.3, big: true, bad: true });
     Sound.boom();
     if (navigator.vibrate) navigator.vibrate([120, 40, 200]);
-    onGrab && onGrab({ v: -BOMB_PENALTY, kind: 'bomb', type: 'bomb', icon: '💣' });
+    award({ v: -BOMB_PENALTY, kind: 'bomb', type: 'bomb', icon: '💣' });
+  }
+  function grab(o) {
+    claimed[o.id] = { p: meId }; refresh();
+    hook.state = 'in'; hook.stunned = false;
+    const req = opts.net.claim(o.id, { p: meId, v: o.v });
+    if (o.kind === 'bomb') {
+      const p = tip();
+      req.then(ok => { if (ok) explode(p, o); });
+      return;
+    }
+    hook.caught = o; o.req = req;
+    o.kind === 'animal' ? Sound.squeak() : Sound.click();
+    req.then(ok => { if (!ok && hook.caught === o) loseCaught(); });
   }
 
   function loop(now) {
     if (!running) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const speed = H * 1.1;
-    animals.forEach(a => {
-      a.x += a.dir * a.sp * dt;
-      if (a.x < 18) { a.x = 18; a.dir = 1; } else if (a.x > W - 18) { a.x = W - 18; a.dir = -1; }
-    });
+    moveAnimals();
     if (hook.stun > 0) hook.stun -= dt;
     if (shake > 0) shake -= dt;
     if (hook.state === 'swing') {
@@ -201,33 +282,28 @@ const Claw = (() => {
     } else if (hook.state === 'out') {
       hook.L += speed * dt;
       const p = tip();
+      const near = o => Math.hypot(o.x - p.x, o.y - p.y) < o.r + 7;
       const wall = walls.find(o => Math.hypot(o.x - p.x, o.y - p.y) < o.r + 4);
-      const hit = items.find(o => Math.hypot(o.x - p.x, o.y - p.y) < o.r + 7);
-      const ani = animals.find(o => Math.hypot(o.x - p.x, o.y - p.y) < o.r + 7);
+      const hit = items.find(near) || animals.find(near);
       if (wall) {
         hook.state = 'in'; Sound.clang();
         floats.push({ text: 'Keng!', x: p.x + 10, y: p.y, life: 0.8, bad: true });
-        onGrab && onGrab({ v: 0, kind: 'wall', type: 'wall', icon: wall.icon });
-      } else if (hit && hit.kind === 'bomb') {
-        items = items.filter(o => o !== hit); explode(p); addItem('bomb');
-      } else if (hit) {
-        hook.caught = hit; items = items.filter(o => o !== hit); hook.state = 'in'; Sound.click();
-      } else if (ani) {
-        hook.caught = ani; animals = animals.filter(o => o !== ani); hook.state = 'in'; Sound.squeak();
-      } else if (p.x < 0 || p.x > W || p.y > H) hook.state = 'in';
+        award({ v: 0, kind: 'wall', type: 'wall', icon: wall.icon });
+      } else if (hit) grab(hit);
+      else if (p.x < 0 || p.x > W || p.y > H) hook.state = 'in';
     } else if (hook.state === 'in') {
       hook.L -= (hook.caught ? speed / hook.caught.w : speed * 1.4) * dt;
       if (hook.L <= 34) {
         hook.L = 34; hook.state = 'swing';
         if (hook.caught) {
           const c = hook.caught; hook.caught = null;
-          let v = c.v;
-          if (c.kind === 'bag') v = [20, 60, 150, 300, 600][Math.floor(Math.random() * 5)];
-          floats.push({ text: '+' + v, x: O().x + 40, y: O().y, life: 1, big: v >= 300, bad: c.kind === 'rock' });
-          c.kind === 'rock' ? Sound.rock() : v >= 300 ? Sound.big() : Sound.coin();
-          if (navigator.vibrate) navigator.vibrate(c.kind === 'rock' ? 120 : 30);
-          onGrab && onGrab({ v, kind: c.kind, type: c.type, icon: c.icon });
-          if (c.kind === 'animal') animals.push(makeAnimal()); else addItem();
+          c.req.then(ok => {
+            if (!ok) return;
+            floats.push({ text: '+' + c.v, x: O().x + 40, y: O().y - 10, life: 1, big: c.v >= 300, bad: c.kind === 'rock' });
+            c.kind === 'rock' ? Sound.rock() : c.v >= 300 ? Sound.big() : Sound.coin();
+            if (navigator.vibrate) navigator.vibrate(c.kind === 'rock' ? 120 : 30);
+            award({ v: c.v, kind: c.kind, type: c.type, icon: c.icon });
+          });
         }
       }
     }
@@ -236,16 +312,16 @@ const Claw = (() => {
     raf = requestAnimationFrame(loop);
   }
 
-  // Nhân vật của chính người chơi: to hơn, có vầng sáng và sao lấp lánh
+  // Nhân vật của chính người chơi: to nhất, có vầng sáng và sao lấp lánh
   function drawMe(o) {
-    const t = performance.now() / 1000, cx = o.x - 72, cy = 64;
-    const R = 68 + Math.sin(t * 3) * 5;
+    const t = performance.now() / 1000, cx = o.x, cy = 54;
+    const R = 62 + Math.sin(t * 3) * 5;
     const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, R);
-    g.addColorStop(0, 'rgba(255,240,150,.95)'); g.addColorStop(0.55, 'rgba(255,205,50,.45)'); g.addColorStop(1, 'rgba(255,205,50,0)');
+    g.addColorStop(0, 'rgba(255,240,150,.95)'); g.addColorStop(0.55, 'rgba(255,205,50,.5)'); g.addColorStop(1, 'rgba(255,205,50,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-    if (img.complete) ctx.drawImage(img, cx - 55, 2, 110, 120);
+    if (img.complete) ctx.drawImage(img, cx - 48, 0, 96, 105);
     for (let i = 0; i < 8; i++) {
-      const a = i / 8 * Math.PI * 2 + t * 0.7, q = 58 + (i % 2) * 8;
+      const a = i / 8 * Math.PI * 2 + t * 0.7, q = 50 + (i % 2) * 8;
       const k = 0.5 + 0.5 * Math.sin(t * 5 + i * 1.7);
       ctx.save(); ctx.translate(cx + Math.cos(a) * q, cy + Math.sin(a) * q); ctx.rotate(t + i); ctx.scale(k, k);
       ctx.fillStyle = '#fff8c4'; ctx.shadowColor = '#ffd23a'; ctx.shadowBlur = 8;
@@ -253,6 +329,58 @@ const Claw = (() => {
       for (let j = 0; j < 8; j++) { const r = j % 2 ? 2 : 8, b = j / 8 * Math.PI * 2; ctx.lineTo(Math.cos(b) * r, Math.sin(b) * r); }
       ctx.closePath(); ctx.fill(); ctx.restore();
     }
+  }
+
+  function drawRope(x1, y1, x2, y2, color, w) {
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = w + 2; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+  function drawHook(x, y, a, color, s) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(s, s);
+    ctx.strokeStyle = color; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-12, 4, -9, 14); ctx.moveTo(0, 0); ctx.quadraticCurveTo(12, 4, 9, 14); ctx.stroke();
+    ctx.restore();
+  }
+  // Đối thủ: mặt nhỏ có viền màu riêng, dây thả xuống đúng món họ vừa lấy
+  function drawOpps(dt) {
+    const t = performance.now() / 1000;
+    let best = 0, lead = null;
+    Object.keys(totals).forEach(p => { if (totals[p] > best) { best = totals[p]; lead = p; } });
+    const list = Object.values(opps);
+    const r = clamp((W - 16) / Math.max(1, list.length) * 0.82, 9, 15);
+    list.forEach(op => {
+      const by = op.y + r;
+      let tx, ty, a;
+      if (op.anim) {
+        op.anim.t += dt;
+        const k = op.anim.t < 0.3 ? op.anim.t / 0.3 : 1 - (op.anim.t - 0.3) / 0.6;
+        tx = op.x + (op.anim.x - op.x) * Math.max(0, k); ty = by + (op.anim.y - by) * Math.max(0, k);
+        a = -Math.atan2(tx - op.x, ty - by);
+        if (op.anim.item && op.anim.t >= 0.3) { const it = op.anim.item; it.x = tx; it.y = ty + it.r * 0.5; drawItem(it); }
+        if (op.anim.t >= 0.9) {
+          if (op.anim.v) floats.push({ text: (op.anim.v > 0 ? '+' : '') + op.anim.v, x: op.x - 10, y: op.y - 6, life: 0.8, small: true, bad: op.anim.v < 0 });
+          op.anim = null;
+        }
+      } else {
+        a = Math.sin(t * 1.9 + op.ph) * 0.9;
+        tx = op.x + Math.sin(a) * 15; ty = by + Math.cos(a) * 15; a = -a;
+      }
+      drawRope(op.x, by, tx, ty, op.color, 2);
+      drawHook(tx, ty, a, op.color, 0.55);
+    });
+    list.forEach(op => {
+      const im = loadImg(op.avatar);
+      ctx.save(); ctx.beginPath(); ctx.arc(op.x, op.y, r, 0, Math.PI * 2); ctx.fillStyle = '#222'; ctx.fill(); ctx.clip();
+      if (im.complete && im.naturalWidth) {
+        if (isFace(op.avatar)) ctx.drawImage(im, op.x - r, op.y - r, r * 2, r * 2);
+        else ctx.drawImage(im, op.x - r * 1.4, op.y - r * 1.1, r * 2.8, r * 3);
+      }
+      ctx.restore();
+      ctx.strokeStyle = op.color; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(op.x, op.y, r, 0, Math.PI * 2); ctx.stroke();
+      if (op.pid === lead) { ctx.save(); ctx.translate(op.x, op.y - r - 3); drawEmoji(ctx, '👑', 13); ctx.restore(); }
+    });
+    return lead;
   }
 
   function drawItem(o) {
@@ -268,6 +396,7 @@ const Claw = (() => {
   }
 
   function draw(dt) {
+    if (Object.keys(opts.players() || {}).length - 1 !== Object.keys(opps).length) layoutOpps();
     ctx.save();
     if (shake > 0) ctx.translate((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
     const sky = ctx.createLinearGradient(0, 0, 0, SKY);
@@ -280,18 +409,16 @@ const Claw = (() => {
     walls.forEach(w => { ctx.save(); ctx.translate(w.x, w.y); drawEmoji(ctx, w.icon, 36); ctx.restore(); });
     items.forEach(drawItem);
     animals.forEach(drawItem);
+    const lead = drawOpps(dt);
     const o = O();
     drawMe(o);
+    if (lead === meId) { ctx.save(); ctx.translate(o.x, 2); drawEmoji(ctx, '👑', 20); ctx.restore(); }
     ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x - 14, o.y - 8, 28, 10);
     ctx.fillStyle = '#9aa4ad'; ctx.beginPath(); ctx.arc(o.x, o.y - 3, 7, 0, Math.PI * 2); ctx.fill();
     const p = tip();
-    ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 5.5; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-    ctx.strokeStyle = hook.stun > 0 ? '#111' : rope; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    drawRope(o.x, o.y, p.x, p.y, hook.stun > 0 ? '#111' : rope, 3.5);
     if (hook.caught) drawItem(hook.caught);
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(-hook.a);
-    ctx.strokeStyle = rope; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-12, 4, -9, 14); ctx.moveTo(0, 0); ctx.quadraticCurveTo(12, 4, 9, 14); ctx.stroke();
-    ctx.restore();
+    drawHook(p.x, p.y, -hook.a, rope, 1);
     booms = booms.filter(b => (b.t += dt) < 0.6);
     booms.forEach(b => {
       const k = b.t / 0.6;
@@ -301,12 +428,12 @@ const Claw = (() => {
       ctx.globalAlpha = 1;
     });
     if (hook.stun > 0) {
-      ctx.save(); ctx.translate(o.x - 72, 8 + Math.sin(hook.stun * 12) * 3); drawEmoji(ctx, '💫', 26); ctx.restore();
+      ctx.save(); ctx.translate(o.x + 40, 10 + Math.sin(hook.stun * 12) * 3); drawEmoji(ctx, '💫', 26); ctx.restore();
     }
     floats = floats.filter(f => (f.life -= dt) > 0);
     floats.forEach(f => {
       ctx.globalAlpha = Math.min(1, f.life * 1.5);
-      ctx.font = `800 ${f.big ? 30 : 22}px 'Baloo 2', sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.font = `800 ${f.small ? 14 : f.big ? 30 : 22}px 'Baloo 2', sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       ctx.fillStyle = f.bad ? '#ff6369' : '#fff3a0'; ctx.strokeStyle = '#2a1500'; ctx.lineWidth = 4;
       const y = f.y - (1 - Math.min(1, f.life)) * 40;
       ctx.strokeText(f.text, f.x, y); ctx.fillText(f.text, f.x, y);

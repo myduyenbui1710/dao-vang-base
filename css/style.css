@@ -404,3 +404,4 @@ b { color: var(--gold2); }
   .p-opt { padding: 8px 10px; min-height: 50px; font-size: .95rem; }
   .claw-cv + p { display: none; }
 }
+.claw-rank { font-weight: 800; color: #fff; background: rgba(255,255,255,.12); border-radius: 999px; padding: 1px 12px; font-size: 1.05rem; }
