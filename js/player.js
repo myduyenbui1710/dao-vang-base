@@ -74,6 +74,20 @@ function enter() {
   document.addEventListener('click', () => Sound.unlock(), { once: true });
 }
 
+// Dự phòng khi điện thoại rớt tín hiệu cập nhật: 2 giây đọc lại trạng thái phòng một lần
+setInterval(async () => {
+  if (!me || !room) return;
+  const url = window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.databaseURL;
+  if (state && state.phase + ':' + state.q !== lastKey) render();
+  if (!url) return;
+  const before = state && state.phase + ':' + state.q;
+  try {
+    const v = await (await fetch(`${url}/rooms/${room}/state.json`, { cache: 'no-store' })).json();
+    const now = state && state.phase + ':' + state.q;
+    if (v && now === before && v.phase + ':' + v.q !== now) { state = v; render(); }
+  } catch (e) { /* mạng chập chờn: lần sau đọc lại */ }
+}, 2000);
+
 // ---------- Ghi hành động ----------
 function act(obj) {
   myAct = { ...myAct, ...obj };
@@ -98,7 +112,11 @@ setInterval(() => {
 }, 120);
 
 async function render(soft = false) {
-  try { await renderInner(soft); } catch (e) { console.error(e); }
+  try { await renderInner(soft); }
+  catch (e) {
+    console.error(e);
+    app.insertAdjacentHTML('beforeend', `<div class="p-card center"><p class="err">Màn hình gặp lỗi: ${esc(e.message)}</p><button class="btn btn-gold" onclick="location.reload()">Tải lại</button></div>`);
+  }
 }
 
 async function renderInner(soft = false) {
@@ -231,7 +249,7 @@ function bind() {
     await act({ bet: betPick, confirmed: true }); Sound.correct(); render();
   };
   app.querySelectorAll('.p-opt').forEach(b => b.onclick = () => {
-    if (myAct.ans != null) return;
+    if (myAct.ans != null || DB.now() > state.endsAt) return;
     const i = +b.dataset.i; act({ ans: i, t: DB.now() }); Sound.click();
     render();
   });

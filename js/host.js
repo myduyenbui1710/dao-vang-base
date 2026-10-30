@@ -3,7 +3,7 @@ DB.init();
 modeBanner();
 
 const app = document.getElementById('app');
-const TIMED = ['ready', 'mine', 'topic', 'answer', 'reveal']; // bước cược dừng chờ host bấm Next
+const TIMED = ['ready', 'mine', 'topic']; // các bước tự chuyển; cược, trả lời, đáp án, bảng xếp hạng đều chờ host bấm Next
 const NEXT = { ready: 'mine', mine: 'topic', topic: 'bet', bet: 'answer', answer: 'reveal', reveal: 'board' };
 const LAST = QUESTIONS.length - 1;
 
@@ -105,7 +105,7 @@ function checkAllAnswered() {
 }
 
 setInterval(() => {
-  if (!state || !TIMED.includes(state.phase)) return;
+  if (!state || !(TIMED.includes(state.phase) || state.phase === 'answer')) return;
   const left = state.endsAt - DB.now();
   const sec = Math.max(0, Math.ceil(left / 1000));
   const cd = document.getElementById('cd');
@@ -113,6 +113,7 @@ setInterval(() => {
   const bar = document.getElementById('cdbar');
   if (bar) bar.style.width = clamp(left / ((RULES.DUR[state.phase]) * 1000) * 100, 0, 100) + '%';
   if (state.phase === 'answer' && sec <= 5 && sec !== lastTickSec && sec > 0) { lastTickSec = sec; Sound.tick(); }
+  if (state.phase === 'answer') { updateAnswerBtn(); return; }
   if (left <= 0) advance();
 }, 150);
 
@@ -214,7 +215,7 @@ function render(soft = false) {
 function renderInner(soft = false) {
   if (!state) return;
   const key = state.phase + ':' + state.q;
-  if (soft && key === lastRendered && !['lobby', 'board', 'final'].includes(state.phase)) { updateLive(); return; }
+  if (soft && key === lastRendered && !['lobby', 'reveal', 'board', 'final'].includes(state.phase)) { updateLive(); return; }
   const firstTime = key !== lastRendered;
   lastRendered = key;
   const Q = QUESTIONS[state.q];
@@ -263,7 +264,8 @@ function renderInner(soft = false) {
       lastTickSec = -1;
       body = `<div class="question-screen"><div class="q-text">${esc(Q.q)}</div>${timerBar()}
         <div class="opts">${Q.opts.map((o, i) => `<div class="opt opt-${i}"><span class="shape">${OPT_SHAPES[i]}</span><b>${OPT_LABELS[i]}</b> ${esc(o)}</div>`).join('')}</div>
-        <div class="live" id="live"></div></div>`;
+        <div class="live" id="live"></div>
+        <button class="btn btn-gold btn-xl" id="toReveal" disabled>Next ▶ Công bố đáp án</button></div>`;
       break;
     case 'reveal': {
       if (firstTime) Sound.reveal();
@@ -273,7 +275,8 @@ function renderInner(soft = false) {
         <div class="opts">${Q.opts.map((o, i) => `<div class="opt opt-${i} ${i === Q.a ? 'is-correct' : 'is-dim'}">
           <span class="shape">${OPT_SHAPES[i]}</span><b>${OPT_LABELS[i]}</b> ${esc(o)}
           <span class="dist"><span class="dist-bar" style="width:${b.dist[i] / max * 100}%"></span>${b.dist[i]}</span></div>`).join('')}</div>
-        <p class="sub"><b>${b.correctN}/${b.total}</b> người trả lời đúng</p>${timerBar()}</div>`;
+        <p class="sub"><b>${b.correctN}/${b.total}</b> người trả lời đúng</p>
+        <button class="btn btn-gold btn-xl" id="toBoard">Next ▶ Bảng xếp hạng</button></div>`;
       break;
     }
     case 'board': {
@@ -305,6 +308,7 @@ function renderInner(soft = false) {
   }
   const nb = document.getElementById('nextBtn'); if (nb) nb.onclick = () => advance();
   const oq = document.getElementById('openQ'); if (oq) oq.onclick = () => advance();
+  ['toReveal', 'toBoard'].forEach(id => { const b = document.getElementById(id); if (b) b.onclick = () => advance(); });
   updateLive();
 }
 
@@ -320,7 +324,7 @@ function updateLive() {
   const n = Object.keys(players).length;
   const list = Object.values(acts);
 
-  if (state.phase === 'answer') el.innerHTML = `${list.filter(a => a.ans != null).length}/${n} đã trả lời`;
+  if (state.phase === 'answer') { el.innerHTML = `${list.filter(a => a.ans != null).length}/${n} đã trả lời`; updateAnswerBtn(); }
 }
 
 // ---------- Màn mỏ vàng toàn màn hình: mỗi thợ mỏ một sợi dây ----------
@@ -370,6 +374,14 @@ function pullRope(el, ev) {
     fx.appendChild(t); setTimeout(() => t.remove(), 1100);
     if (Date.now() - lastCoinSfx > 150) { lastCoinSfx = Date.now(); ev.kind === 'rock' ? Sound.rock() : ev.v >= 300 ? Sound.big() : Sound.coin(); }
   }, 1250);
+}
+
+// Nút công bố đáp án mở khi tất cả đã chọn, hoặc đã hết 15 giây (phòng khi có người không trả lời)
+function updateAnswerBtn() {
+  const b = document.getElementById('toReveal'); if (!b) return;
+  const pids = Object.keys(players);
+  const all = pids.length > 0 && pids.every(pid => acts[pid] && acts[pid].ans != null);
+  b.disabled = !(all || state.endsAt - DB.now() <= 0);
 }
 
 function updateMiners() {
