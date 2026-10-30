@@ -419,3 +419,20 @@ b { color: var(--gold2); }
 @keyframes meGlow { to { filter: drop-shadow(0 0 16px #fff3a0) drop-shadow(0 0 32px #ffb700); } }
 @keyframes meTwinkle { from { opacity: .25; transform: scale(.6); } to { opacity: 1; transform: scale(1.2); } }
 .rm.me .rm-tag { margin-bottom: 30px; }
+
+/* ---------- Sơ đồ cây luật chơi ---------- */
+.tree-screen { position: fixed; inset: 0; z-index: 30; background: #1a1006; overflow: auto; padding: 2.5vh 2vw; display: flex; flex-direction: column; align-items: center; }
+.tree-close { position: absolute; top: 14px; right: 18px; }
+.t-root { background: linear-gradient(180deg, var(--gold2), var(--gold)); color: #2a1a00; font-weight: 800; font-size: clamp(1.1rem, 2.4vw, 2rem); border-radius: 16px; padding: 10px 32px; }
+.t-trunk { width: 5px; height: 3vh; background: var(--gold); }
+.t-cols { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1vw; width: 100%; border-top: 5px solid var(--gold); }
+.t-col { display: flex; flex-direction: column; align-items: stretch; padding-top: 3vh; position: relative; }
+.t-col::before { content: ''; position: absolute; top: 0; left: 50%; width: 5px; height: 3vh; margin-left: -2.5px; background: var(--gold); }
+.t-node { background: var(--tc); color: #fff; border-radius: 14px; padding: 10px 8px; text-align: center; }
+.t-node b { display: block; color: #fff; font-size: clamp(1rem, 1.9vw, 1.6rem); }
+.t-node span { font-size: clamp(.75rem, 1.1vw, 1rem); }
+.t-kids { display: grid; gap: 8px; margin-top: 12px; padding-left: 14px; border-left: 4px solid var(--tc); }
+.t-kid { position: relative; background: color-mix(in srgb, var(--tc) 22%, #1a1006); border: 2px solid var(--tc); border-radius: 10px; padding: 7px 10px; font-weight: 700; font-size: clamp(.8rem, 1.25vw, 1.15rem); line-height: 1.3; }
+.t-kid::before { content: ''; position: absolute; left: -16px; top: 50%; width: 14px; height: 4px; margin-top: -2px; background: var(--tc); }
+.c1 { --tc: #e8891a; } .c2 { --tc: #2f80ed; } .c3 { --tc: #d6336c; } .c4 { --tc: #2f9e5b; } .c5 { --tc: #8e4ec6; }
+.t-kid { font-size: clamp(.8rem, 1.42vw, 1.3rem); padding: 6px 9px; }

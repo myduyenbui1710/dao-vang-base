@@ -275,6 +275,7 @@ function renderInner(soft = false) {
             <div>❓ <b>Trả lời 15s</b>: có cược thì đúng nhận số cược, sai mất số cược. Không cược thì đúng được +${RULES.CORRECT_BONUS}</div>
             <div>🌙 <b>Câu cuối Đêm vàng</b>: được cược cả Két, thắng x2</div>
           </div>
+          <button class="btn btn-ghost btn-xl" id="treeBtn">🌳 Sơ đồ luật chơi</button>
           <button class="btn btn-gold btn-xl" id="startBtn" ${Object.keys(players).length ? '' : 'disabled'}>Bắt đầu ▶</button>
         </div></div>`;
       break;
@@ -343,12 +344,32 @@ function renderInner(soft = false) {
   if (state.phase === 'lobby') {
     const qr = document.getElementById('qr');
     if (qr && window.QRCode) new QRCode(qr, { text: joinUrl(), width: 280, height: 280, colorDark: '#1a1208', colorLight: '#ffffff' });
+    const tb = document.getElementById('treeBtn'); if (tb) tb.onclick = showRulesTree;
     const sb = document.getElementById('startBtn'); if (sb) sb.onclick = () => { Sound.unlock(); advance(); };
   }
   const nb = document.getElementById('nextBtn'); if (nb) nb.onclick = () => advance();
   const oq = document.getElementById('openQ'); if (oq) oq.onclick = () => advance();
   ['toReveal', 'toBoard'].forEach(id => { const b = document.getElementById(id); if (b) b.onclick = () => advance(); });
   updateLive();
+}
+
+// Sơ đồ cây luật chơi, chiếu lên trước khi giải thích
+function showRulesTree() {
+  const col = (cls, title, time, kids) => `<div class="t-col ${cls}"><div class="t-node"><b>${title}</b><span>${time}</span></div>
+    <div class="t-kids">${kids.map(k => `<div class="t-kid">${k}</div>`).join('')}</div></div>`;
+  const el = document.createElement('div');
+  el.className = 'tree-screen';
+  el.innerHTML = `<button class="btn btn-gold tree-close" id="treeClose">✕ Đóng</button>
+    <div class="t-root">⛏️ ĐÀO VÀNG · 10 câu · Bắt đầu với 💰 ${RULES.START_BANK}</div><div class="t-trunk"></div>
+    <div class="t-cols">
+    ${col('c1', '1. Kéo vàng', RULES.DUR.mine + ' giây · chạm để thả móc', ['🟡 Vàng: +50 đến +320', '💎 Món đặc biệt: +450 trở lên', '❓ Túi bí ẩn: +20 đến +600', '🐭 Con vật: +40 đến +110, mang 💎 thì +500', '🪨 Đá: +12 đến +25, rất nặng', '💣 Bom: −100 và choáng', '📦 Vật cản: móc bật lại'])}
+    ${col('c2', '2. Hé chủ đề', RULES.DUR.topic + ' giây', ['👀 Xem chủ đề câu hỏi', '🎲 Biết câu này có cược không'])}
+    ${col('c3', '3. Đặt cược', RULES.BET_COUNT + ' câu · bấm Xác nhận', ['🛡️ Không cược', '25% số vàng vừa đào', '50% số vàng vừa đào', '🔥 ALL-IN 100%'])}
+    ${col('c4', '4. Trả lời', RULES.DUR.answer + ' giây', ['✅ Đúng, có cược: + số cược + thưởng nhanh', '❌ Sai, có cược: mất số cược', '✅ Đúng, không cược: +' + RULES.CORRECT_BONUS + ' + thưởng nhanh', '➖ Sai, không cược: không mất gì'])}
+    ${col('c5', '5. Xếp hạng', 'Host bấm Next', ['🏆 Top 5 trên màn chiếu', '💀 All-in thất bại', '⚡ Thần tài', '🌙 Câu cuối: cược cả Két, thắng x2'])}
+    </div>`;
+  document.body.appendChild(el);
+  document.getElementById('treeClose').onclick = () => el.remove();
 }
 
 function bindCommon() {
