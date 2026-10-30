@@ -42,9 +42,48 @@ async function setup() {
     await DB.set(`rooms/${room}`, { state: { phase: 'lobby', q: -1, endsAt: 0, betQs, createdAt: DB.now() } });
     localStorage.setItem('daovang_host_room', room);
     start();
+    if (DEMO) startDemo();
   };
   const r = document.getElementById('resume');
   if (r) r.onclick = () => { Sound.unlock(); room = resumable; start(); };
+}
+
+// ---------- Chế độ demo: host.html?demo=19 tạo người chơi ảo để xem thử khi đông người ----------
+const DEMO = Math.min(24, +new URLSearchParams(location.search).get('demo') || 0);
+const DEMO_NAMES = ['Hùng', 'Lan', 'Quân', 'Thảo', 'Minh', 'Tuấn', 'Mai', 'Nam', 'Hà', 'Long', 'Vy', 'Khoa', 'Trang', 'Đức', 'Linh', 'Phong', 'Ngọc', 'Bảo', 'An', 'Sơn', 'Yến', 'Tâm', 'Kiên', 'Dũng'];
+function startDemo() {
+  const bots = {};
+  DEMO_NAMES.slice(0, DEMO).forEach((name, i) => { bots['bot' + i] = { name, avatar: 'p' + i, joinedAt: i + 1 }; });
+  DB.update(R('players'), bots);
+  const ids = Object.keys(bots), mined = {}, grabs = {};
+  let key = '', pool = [], lost = {};
+  setInterval(() => {
+    if (!state || state.q < 0) return;
+    const q = state.q, k = state.phase + ':' + q;
+    if (k !== key) {
+      key = k;
+      if (state.phase === 'ready' || state.phase === 'mine') { pool = Claw.previewPool(room + ':' + q, q); lost = {}; ids.forEach(b => { mined[b] = 0; grabs[b] = 0; }); }
+      if (state.phase === 'bet') ids.forEach(b => setTimeout(() => {
+        if (state.phase === 'bet') DB.update(R(`actions/${q}/${b}`), { bet: [0, 25, 25, 50, 50, 100][rand(0, 5)], confirmed: true });
+      }, 500 + Math.random() * 6000));
+      if (state.phase === 'answer') ids.forEach(b => setTimeout(() => {
+        const a = Math.random() < 0.65 ? QUESTIONS[q].a : rand(0, 3);
+        if (state.phase === 'answer') DB.update(R(`actions/${q}/${b}`), { ans: a, t: DB.now() });
+      }, 1500 + Math.random() * 11000));
+    }
+    if (state.phase !== 'mine') return;
+    ids.forEach(b => {
+      if (Math.random() > 0.09) return;
+      const free = pool.filter(o => !lost[o.id]).slice(0, 14);
+      const it = free[rand(0, free.length - 1)]; if (!it) return;
+      lost[it.id] = true;
+      DB.claim(R(`claims/${q}/${it.id}`), { p: b, v: it.v }).then(ok => {
+        if (!ok) return;
+        mined[b] = clamp(mined[b] + it.v, 0, RULES.MAX_MINE); grabs[b]++;
+        DB.update(R(`actions/${q}/${b}`), { mined: mined[b], ev: { n: grabs[b], kind: it.kind, type: it.type, v: it.v, icon: it.icon || null } });
+      });
+    });
+  }, 300);
 }
 
 function start() {

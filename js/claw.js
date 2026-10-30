@@ -456,5 +456,12 @@ const Claw = (() => {
     return c.toDataURL();
   }
 
-  return { start, stop, tap, itemURL };
+  // Danh sách vật phẩm của một màn, dùng cho người chơi ảo ở chế độ demo
+  function previewPool(seed, q) {
+    W = 360; H = 560; theme = THEMES[q % THEMES.length];
+    buildField(seed);
+    return pool;
+  }
+
+  return { start, stop, tap, itemURL, previewPool };
 })();
