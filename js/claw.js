@@ -262,7 +262,7 @@ const Claw = (() => {
     items.forEach(drawItem);
     animals.forEach(drawItem);
     const o = O();
-    if (img.complete) ctx.drawImage(img, o.x - 70, 4, 60, 66);
+    if (img.complete) ctx.drawImage(img, o.x - 92, 0, 80, 87);
     ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x - 14, o.y - 8, 28, 10);
     ctx.fillStyle = '#9aa4ad'; ctx.beginPath(); ctx.arc(o.x, o.y - 3, 7, 0, Math.PI * 2); ctx.fill();
     const p = tip();

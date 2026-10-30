@@ -39,15 +39,24 @@ async function boot() {
 }
 
 function joinForm() {
-  let chosen = MINER_IDS[rand(0, MINER_IDS.length - 1)];
+  let chosen = null;
   app.innerHTML = `<div class="p-card">
     <div class="logo small">⛏️ <span>Đào Vàng</span> · Phòng ${esc(room)}</div>
     <label class="lbl">Tên của bạn</label>
     <input id="nameIn" class="inp" maxlength="18" placeholder="VD: Duyên Sales" autocomplete="off">
-    <label class="lbl">Chọn avatar</label>
-    <div class="ava-pick">${MINER_IDS.map(a => `<button class="ava-opt ${a === chosen ? 'sel' : ''}" data-a="${a}">${minerSVG(a)}</button>`).join('')}</div>
+    <label class="lbl">Chọn mặt của bạn</label>
+    <div class="ava-pick face-pick">${AVATAR_CHOICES.map(a => `<button class="ava-opt" data-a="${a}">${isFace(a) ? ava(a) : minerSVG(a)}</button>`).join('')}</div>
     <button class="btn btn-gold btn-block" id="joinBtn">Vào mỏ ⛏️</button>
     <p class="err" id="err"></p></div>`;
+  // Mặt đã có người chọn thì khóa lại
+  unsubs.push(DB.on(R('players'), v => {
+    const taken = Object.values(v || {}).map(p => p.avatar);
+    app.querySelectorAll('.ava-opt').forEach(b => {
+      const t = isFace(b.dataset.a) && taken.includes(b.dataset.a);
+      b.disabled = t; b.classList.toggle('taken', t);
+      if (t && chosen === b.dataset.a) { chosen = null; b.classList.remove('sel'); }
+    });
+  }));
   app.querySelectorAll('.ava-opt').forEach(b => b.onclick = () => {
     chosen = b.dataset.a; app.querySelectorAll('.ava-opt').forEach(x => x.classList.toggle('sel', x === b)); Sound.unlock(); Sound.click();
   });
@@ -55,7 +64,10 @@ function joinForm() {
     Sound.unlock();
     let name = document.getElementById('nameIn').value.trim().replace(/\s+/g, ' ');
     if (!name) { document.getElementById('err').textContent = 'Nhập tên trước đã nhé'; return; }
-    const existing = Object.values((await DB.get(R('players'))) || {}).map(p => p.name.toLowerCase());
+    if (!chosen) { document.getElementById('err').textContent = 'Chọn mặt của bạn nhé'; return; }
+    const others = Object.values((await DB.get(R('players'))) || {});
+    if (isFace(chosen) && others.some(p => p.avatar === chosen)) { document.getElementById('err').textContent = 'Mặt này vừa có người chọn, bạn chọn lại nhé'; return; }
+    const existing = others.map(p => p.name.toLowerCase());
     let final = name, n = 2;
     while (existing.includes(final.toLowerCase())) final = `${name} ${n++}`;
     pid = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);

@@ -15,14 +15,37 @@ const MINERS = [
 ];
 const MINER_IDS = MINERS.map((_, i) => 'm' + i);
 
+const isFace = id => /^p\d+$/.test(String(id)) && typeof FACES !== 'undefined' && !!FACES[+String(id).slice(1)];
+let faceClipN = 0;
+
 function minerSVG(id) {
-  const m = MINERS[+String(id).slice(1)] || MINERS[0];
+  const idx = +String(id).slice(1) || 0;
+  const m = isFace(id) ? MINERS[idx % MINERS.length] : (MINERS[idx] || MINERS[0]);
   const hair = {
     short: `<path d="M38 30 q12 -8 26 0 v6 h-26z" fill="${m.hair}"/>`,
     long: `<path d="M36 30 q14 -10 28 0 v24 q-3 4 -6 0 v-18 h-16 v18 q-3 4 -6 0z" fill="${m.hair}"/>`,
     beard: `<path d="M38 30 q12 -8 26 0 v5 h-26z" fill="${m.hair}"/><path d="M40 44 q11 14 22 0 q-2 10 -11 11 q-9 -1 -11 -11z" fill="${m.hair}"/>`,
     bun: `<circle cx="38" cy="34" r="6" fill="${m.hair}"/><path d="M38 30 q12 -8 26 0 v6 h-26z" fill="${m.hair}"/>`,
   }[m.style];
+  const clip = 'fc' + (++faceClipN);
+  const headSVG = isFace(id) ? `<g class="head">
+    <clipPath id="${clip}"><circle cx="51" cy="31" r="23"/></clipPath>
+    <circle cx="51" cy="31" r="24.5" fill="${m.hat}"/>
+    <image href="${FACES[idx]}" x="28" y="8" width="46" height="46" clip-path="url(#${clip})"/>
+    <path d="M37 11 q14 -15 28 0z" fill="${m.hat}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
+    <rect x="33" y="8.5" width="36" height="4" rx="2" fill="${m.hat}" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/>
+    <circle cx="51" cy="3.5" r="3" fill="#fff59d" stroke="#bfa000" stroke-width="1.2"/>
+  </g>` : `<g class="head">
+    ${m.style === 'long' ? hair : ''}
+    <circle cx="51" cy="38" r="15" fill="${m.skin}"/>
+    ${m.style !== 'long' ? hair : ''}
+    <circle cx="57" cy="38" r="2" fill="#222"/><circle cx="47" cy="38" r="2" fill="#222"/>
+    <circle cx="61" cy="43" r="2.6" fill="#ff9a8a" opacity=".6"/>
+    <path d="M47 45 q5 4 10 0" stroke="#222" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M33 31 q18 -26 37 0z" fill="${m.hat}" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>
+    <rect x="30" y="29" width="43" height="5" rx="2.5" fill="${m.hat}" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>
+    <circle cx="66" cy="23" r="4.5" fill="#fff59d" stroke="#bfa000" stroke-width="1.5"/>
+  </g>`;
   return `<svg class="mfig" viewBox="0 0 110 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <ellipse cx="52" cy="116" rx="26" ry="4" fill="rgba(0,0,0,.25)"/>
   <g class="legs">
@@ -37,17 +60,7 @@ function minerSVG(id) {
   <path d="M41 54 v32 M64 54 v32" stroke="${m.pants}" stroke-width="3.5"/>
   <rect x="36" y="80" width="33" height="7" rx="3" fill="#5d4037"/>
   <rect x="49" y="80" width="7" height="7" rx="1.5" fill="#ffc400"/>
-  <g class="head">
-    ${m.style === 'long' ? hair : ''}
-    <circle cx="51" cy="38" r="15" fill="${m.skin}"/>
-    ${m.style !== 'long' ? hair : ''}
-    <circle cx="57" cy="38" r="2" fill="#222"/><circle cx="47" cy="38" r="2" fill="#222"/>
-    <circle cx="61" cy="43" r="2.6" fill="#ff9a8a" opacity=".6"/>
-    <path d="M47 45 q5 4 10 0" stroke="#222" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <path d="M33 31 q18 -26 37 0z" fill="${m.hat}" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>
-    <rect x="30" y="29" width="43" height="5" rx="2.5" fill="${m.hat}" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>
-    <circle cx="66" cy="23" r="4.5" fill="#fff59d" stroke="#bfa000" stroke-width="1.5"/>
-  </g>
+  ${headSVG}
   <g class="arm">
     <rect x="83.5" y="18" width="5" height="60" rx="2.5" fill="#8d5a2b"/>
     <path d="M69 25 q17 -15 34 0 q-17 -6 -34 0z" fill="#9aa4ad" stroke="#5f6a73" stroke-width="2.5" stroke-linejoin="round"/>
@@ -59,5 +72,9 @@ function minerSVG(id) {
 
 // Hiển thị avatar ở mọi nơi: nhân vật SVG nếu là 'mN', còn lại (dữ liệu cũ) hiển thị như chữ.
 function ava(a) {
+  if (isFace(a)) return `<img class="face-ava" src="${FACES[+String(a).slice(1)]}" alt="">`;
   return /^m\d+$/.test(String(a)) ? `<span class="mava">${minerSVG(a)}</span>` : esc(a);
 }
+
+// Lựa chọn lúc vào phòng: mặt từng người + vài thợ mỏ hoạt hình cho người không có trong ảnh
+const AVATAR_CHOICES = (typeof FACES !== 'undefined' ? FACES.map((_, i) => 'p' + i) : []).concat(MINER_IDS.slice(0, 4));

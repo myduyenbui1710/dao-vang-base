@@ -349,7 +349,7 @@ function mineScene() {
     <div class="scene-ground" style="background:linear-gradient(180deg,${th.dirt[0]},${th.dirt[1]} 55%,${th.dirt[2]})">${decor}</div>
     <div class="rope-row">${list.map((p, i) => `<div class="rm" id="sm-${p.pid}" style="left:${(i + 0.5) / n * 100}%">
       <div class="rm-tag"><span class="sm-crown">👑</span><span class="sm-name">${esc(p.name)}</span><span class="sm-gold">0</span></div>
-      <div class="rm-fig">${/^m\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>
+      <div class="rm-fig">${/^[mp]\d+$/.test(p.avatar) ? minerSVG(p.avatar) : `<span class="sm-ava">${esc(p.avatar)}</span>`}</div>
       <div class="rm-pulley"></div>
       <div class="rope" style="animation-delay:-${(i * 0.37) % 2.4}s"><div class="rope-line"></div><div class="claw-hook"><span class="hook-item"></span></div></div>
       <div class="sm-fx"></div>

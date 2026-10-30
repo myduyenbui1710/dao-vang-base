@@ -359,3 +359,19 @@ b { color: var(--gold2); }
 .hook-item img { display: block; max-width: 74px; }
 .hook-item.blast { font-size: 5rem; top: -20px; }
 .rm-fig.boom { animation: stun .9s; }
+
+/* ---------- Avatar mặt người ---------- */
+.face-ava { display: inline-block; width: 1.3em; height: 1.3em; border-radius: 50%; object-fit: cover; vertical-align: middle; border: 2px solid var(--gold); }
+.ava.big .face-ava { width: 90px; height: 90px; }
+.pod-1 .ava .face-ava { width: 120px; height: 120px; }
+.ava.huge .face-ava { width: 120px; height: 120px; }
+.face-pick { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.face-pick .ava-opt { padding: 3px; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; }
+.face-pick .face-ava { width: 100%; height: 100%; border-width: 0; }
+.face-pick svg { height: 100%; }
+.ava-opt.taken { opacity: .25; filter: grayscale(1); }
+.rm-fig { width: calc(118px * var(--s)); height: calc(128px * var(--s)); }
+.mine-scene .scene-sky { height: 42%; }
+.mine-scene .scene-ground { inset: 42% 0 0 0; }
+.rope-row { height: 42%; }
+.hud-title { text-shadow: 0 3px 0 #3a2208, 0 0 10px #000a, 2px 2px 0 #3a2208, -2px 2px 0 #3a2208; }
