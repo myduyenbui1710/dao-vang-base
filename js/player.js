@@ -146,6 +146,7 @@ async function renderInner(soft = false) {
   const Q = QUESTIONS[state.q];
   const isBet = !!(state.betQs && state.betQs['q' + state.q]);
   const last = state.q === LAST;
+  document.body.classList.toggle('playing', state.phase === 'mine');
   let html = '';
   switch (state.phase) {
     case 'lobby':
@@ -161,7 +162,7 @@ async function renderInner(soft = false) {
       break;
     case 'mine':
       html = `<div class="claw-top"><span class="p-phase">${THEMES[state.q % THEMES.length].icon} <span id="cd"></span>s</span>
-        <span class="claw-rank" id="clawRank"></span><span class="claw-gold">💰 <b id="minedNum">${fmt(mine.mined)}</b></span></div>${timer()}
+        <span class="claw-rank" id="clawRank"></span><button class="fs-btn" id="fsBtn">⛶ Toàn màn hình</button><span class="claw-gold">💰 <b id="minedNum">${fmt(mine.mined)}</b></span></div>${timer()}
         <canvas id="claw" class="claw-cv"></canvas>
         <div class="move-row"><button class="move-btn" data-dir="-1">◀ Trái</button><button class="move-btn" data-dir="1">Phải ▶</button></div>
         <p class="muted center small">${matchMedia('(hover: hover)').matches ? 'Mũi tên ◀ ▶ để đi · Phím cách hoặc bấm chuột để thả móc' : 'Giữ ◀ ▶ hoặc vuốt ngang để đi · Chạm mỏ để thả móc'} · Ai móc trước được trước</p>`;
@@ -257,6 +258,8 @@ function bind() {
     });
     // Chạm nhẹ để thả móc, vuốt ngang để đi trái phải (nhận cả cảm ứng lẫn chuột)
     let drag = null;
+    const fs = document.getElementById('fsBtn');
+    if (fs) fs.onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
     cv.addEventListener('pointerdown', e => {
       e.preventDefault(); Sound.unlock();
       drag = { x: e.clientX, moved: 0 };
@@ -308,6 +311,8 @@ window.addEventListener('keydown', e => {
   else return;
   e.preventDefault();
 });
+window.addEventListener('resize', () => Claw.resize());
+document.addEventListener('fullscreenchange', () => setTimeout(() => Claw.resize(), 100));
 window.addEventListener('keyup', e => {
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') Claw.move(0);
 });

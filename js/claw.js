@@ -112,7 +112,7 @@ const Claw = (() => {
   const SKY = 164, ACTIVE = 14, ANIMALS = 3;
   let cv, ctx, W, H, dpr, theme, pool, walls, aniPool, items, animals, hook, raf, last, opts, img, floats, booms, shake, running = false;
   let claimed, totals, firstSnap, unsub, opps, faceImgs, rope, meId;
-  let heroX = 0, moveDir = 0;
+  let heroX = 0, moveDir = 0, zoom = 1, cssW = 0, cssH = 0;
   const O = () => ({ x: heroX, y: 112 });
   const HERO_SPEED = 190, HERO_MARGIN = 56;
 
@@ -218,14 +218,30 @@ const Claw = (() => {
     Sound.clang();
   }
 
+  // Màn hình lớn thì phóng to cả mỏ; W, H là kích thước logic sau khi chia tỉ lệ
+  function measure() {
+    dpr = window.devicePixelRatio || 1;
+    const rect = cv.getBoundingClientRect();
+    cssW = rect.width; cssH = rect.height;
+    zoom = clamp(Math.min(cssW / 620, cssH / 480), 1, 2.2);
+    W = cssW / zoom; H = cssH / zoom;
+    cv.width = cssW * dpr; cv.height = cssH * dpr;
+    ctx = cv.getContext('2d'); ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, 0, 0);
+  }
+  function resize() {
+    if (!running) return;
+    const rect = cv.getBoundingClientRect();
+    if (Math.abs(rect.width - cssW) < 2 && Math.abs(rect.height - cssH) < 80) return;
+    const k = heroX / W;
+    measure(); buildField(opts.seed); refresh(); layoutOpps(); setHero(k * W);
+    if (hook.caught) hook.caught = null;
+    hook.state = hook.state === 'swing' ? 'swing' : 'in';
+  }
+
   function start(canvas, o) {
     stop();
     cv = canvas; opts = o; meId = o.me; theme = THEMES[o.q % THEMES.length]; rope = ropeColor(o.avatar);
-    dpr = window.devicePixelRatio || 1;
-    const rect = cv.getBoundingClientRect();
-    W = rect.width; H = rect.height;
-    cv.width = W * dpr; cv.height = H * dpr;
-    ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    measure();
     heroX = W / 2; moveDir = 0;
     floats = []; booms = []; shake = 0; claimed = {}; totals = {}; firstSnap = true; faceImgs = {}; opps = {};
     buildField(o.seed); refresh(); layoutOpps();
@@ -245,7 +261,7 @@ const Claw = (() => {
   const canMove = () => running && hook.state === 'swing' && hook.stun <= 0;
   const setHero = x => { heroX = clamp(x, HERO_MARGIN, W - HERO_MARGIN); };
   function move(dir) { moveDir = dir; }
-  function shift(dx) { if (canMove()) setHero(heroX + dx); }
+  function shift(dx) { if (canMove()) setHero(heroX + dx / zoom); }
   function tip() { const o = O(); return { x: o.x + Math.sin(hook.a) * hook.L, y: o.y + Math.cos(hook.a) * hook.L }; }
   const award = g => {
     totals[meId] = totals[meId] || 0; // tổng thật cập nhật khi tín hiệu từ máy chủ về
@@ -472,5 +488,5 @@ const Claw = (() => {
     return pool;
   }
 
-  return { start, stop, tap, move, shift, itemURL, previewPool };
+  return { start, stop, tap, move, shift, resize, itemURL, previewPool };
 })();

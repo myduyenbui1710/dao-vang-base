@@ -443,3 +443,14 @@ b { color: var(--gold2); }
 .move-btn { font: inherit; font-weight: 800; font-size: 1.25rem; padding: 12px 0; border: 0; border-radius: 14px; color: #2a1a00; background: linear-gradient(180deg, var(--gold2), var(--gold)); box-shadow: 0 4px 0 #a87600; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .move-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #a87600; }
 .move-row + p { margin: 6px 0 0; }
+
+/* Máy tính: lúc kéo vàng mở hết màn hình */
+.fs-btn { display: none; font: inherit; font-weight: 700; color: var(--text); background: rgba(255,255,255,.12); border: 0; border-radius: 999px; padding: 2px 14px; cursor: pointer; }
+@media (min-width: 900px) {
+  body.playing .player { max-width: none; padding: 8px 24px 6px; }
+  body.playing .fs-btn { display: inline-block; }
+  body.playing .claw-cv { height: calc(100dvh - 170px); max-height: none; }
+  body.playing .player .cd-wrap { max-width: none; margin: 4px 0; }
+  body.playing .move-row { max-width: 560px; margin: 8px auto 0; }
+  body.playing .move-btn { padding: 8px 0; }
+}
