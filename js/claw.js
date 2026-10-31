@@ -112,7 +112,9 @@ const Claw = (() => {
   const SKY = 164, ACTIVE = 14, ANIMALS = 3;
   let cv, ctx, W, H, dpr, theme, pool, walls, aniPool, items, animals, hook, raf, last, opts, img, floats, booms, shake, running = false;
   let claimed, totals, firstSnap, unsub, opps, faceImgs, rope, meId;
-  const O = () => ({ x: W / 2, y: 112 });
+  let heroX = 0, moveDir = 0;
+  const O = () => ({ x: heroX, y: 112 });
+  const HERO_SPEED = 190, HERO_MARGIN = 56;
 
   // Bộ sinh số theo seed: mọi điện thoại trong phòng tạo ra đúng một mỏ giống nhau
   function seeded(str) {
@@ -224,6 +226,7 @@ const Claw = (() => {
     W = rect.width; H = rect.height;
     cv.width = W * dpr; cv.height = H * dpr;
     ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    heroX = W / 2; moveDir = 0;
     floats = []; booms = []; shake = 0; claimed = {}; totals = {}; firstSnap = true; faceImgs = {}; opps = {};
     buildField(o.seed); refresh(); layoutOpps();
     hook = { state: 'swing', t: Math.random() * 6, a: 0, L: 34, caught: null, stun: 0 };
@@ -238,6 +241,11 @@ const Claw = (() => {
     if (running && hook.state === 'swing' && hook.stun <= 0) { hook.state = 'out'; return true; }
     return false;
   }
+  // Di chuyển trái phải: chỉ đi được khi móc đang ở trên và không bị choáng
+  const canMove = () => running && hook.state === 'swing' && hook.stun <= 0;
+  const setHero = x => { heroX = clamp(x, HERO_MARGIN, W - HERO_MARGIN); };
+  function move(dir) { moveDir = dir; }
+  function shift(dx) { if (canMove()) setHero(heroX + dx); }
   function tip() { const o = O(); return { x: o.x + Math.sin(hook.a) * hook.L, y: o.y + Math.cos(hook.a) * hook.L }; }
   const award = g => {
     totals[meId] = totals[meId] || 0; // tổng thật cập nhật khi tín hiệu từ máy chủ về
@@ -275,6 +283,7 @@ const Claw = (() => {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const speed = H * 1.1;
     moveAnimals();
+    if (moveDir && canMove()) setHero(heroX + moveDir * HERO_SPEED * dt);
     if (hook.stun > 0) hook.stun -= dt;
     if (shake > 0) shake -= dt;
     if (hook.state === 'swing') {
@@ -463,5 +472,5 @@ const Claw = (() => {
     return pool;
   }
 
-  return { start, stop, tap, itemURL, previewPool };
+  return { start, stop, tap, move, shift, itemURL, previewPool };
 })();

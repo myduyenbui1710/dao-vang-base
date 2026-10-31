@@ -163,7 +163,8 @@ async function renderInner(soft = false) {
       html = `<div class="claw-top"><span class="p-phase">${THEMES[state.q % THEMES.length].icon} <span id="cd"></span>s</span>
         <span class="claw-rank" id="clawRank"></span><span class="claw-gold">💰 <b id="minedNum">${fmt(mine.mined)}</b></span></div>${timer()}
         <canvas id="claw" class="claw-cv"></canvas>
-        <p class="muted center small">Cả phòng dùng chung một mỏ, ai móc trước được trước · 💣 trừ ${BOMB_PENALTY} vàng và choáng</p>`;
+        <div class="move-row"><button class="move-btn" data-dir="-1">◀ Trái</button><button class="move-btn" data-dir="1">Phải ▶</button></div>
+        <p class="muted center small">${matchMedia('(hover: hover)').matches ? 'Mũi tên ◀ ▶ để đi · Phím cách hoặc bấm chuột để thả móc' : 'Giữ ◀ ▶ hoặc vuốt ngang để đi · Chạm mỏ để thả móc'} · Ai móc trước được trước</p>`;
       break;
     case 'topic':
       html = `${topBar()}<div class="p-card center"><p class="muted">Chủ đề câu ${state.q + 1}</p>
@@ -254,8 +255,30 @@ function bind() {
         const el = document.getElementById('minedNum'); if (el) el.textContent = fmt(mine.mined);
       },
     });
-    // pointerdown nhận cả cảm ứng lẫn chuột, kể cả laptop màn cảm ứng
-    cv.addEventListener('pointerdown', e => { e.preventDefault(); Sound.unlock(); if (state && state.phase === 'mine') Claw.tap(); });
+    // Chạm nhẹ để thả móc, vuốt ngang để đi trái phải (nhận cả cảm ứng lẫn chuột)
+    let drag = null;
+    cv.addEventListener('pointerdown', e => {
+      e.preventDefault(); Sound.unlock();
+      drag = { x: e.clientX, moved: 0 };
+      if (cv.setPointerCapture) cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x; drag.x = e.clientX; drag.moved += Math.abs(dx);
+      if (drag.moved > 10) Claw.shift(dx);
+    });
+    const endDrag = e => {
+      if (drag && drag.moved <= 10 && e.type === 'pointerup' && state && state.phase === 'mine') Claw.tap();
+      drag = null;
+    };
+    cv.addEventListener('pointerup', endDrag);
+    cv.addEventListener('pointercancel', endDrag);
+    app.querySelectorAll('.move-btn').forEach(b => {
+      const dir = +b.dataset.dir;
+      b.addEventListener('pointerdown', e => { e.preventDefault(); Sound.unlock(); Claw.move(dir); });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => b.addEventListener(t, () => Claw.move(0)));
+      b.addEventListener('contextmenu', e => e.preventDefault());
+    });
   } else Claw.stop();
   app.querySelectorAll('.bet-btn').forEach(b => b.onclick = () => {
     if (myAct.confirmed) return;
@@ -275,5 +298,18 @@ function bind() {
     render();
   });
 }
+
+// Chơi bằng máy tính: mũi tên trái phải để đi, phím cách hoặc mũi tên xuống để thả móc
+window.addEventListener('keydown', e => {
+  if (!state || state.phase !== 'mine' || !document.getElementById('claw')) return;
+  if (e.key === 'ArrowLeft') Claw.move(-1);
+  else if (e.key === 'ArrowRight') Claw.move(1);
+  else if (e.key === ' ' || e.key === 'ArrowDown') { if (!e.repeat) { Sound.unlock(); Claw.tap(); } }
+  else return;
+  e.preventDefault();
+});
+window.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') Claw.move(0);
+});
 
 boot();

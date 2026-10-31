@@ -436,3 +436,10 @@ b { color: var(--gold2); }
 .t-kid::before { content: ''; position: absolute; left: -16px; top: 50%; width: 14px; height: 4px; margin-top: -2px; background: var(--tc); }
 .c1 { --tc: #e8891a; } .c2 { --tc: #2f80ed; } .c3 { --tc: #d6336c; } .c4 { --tc: #2f9e5b; } .c5 { --tc: #8e4ec6; }
 .t-kid { font-size: clamp(.8rem, 1.42vw, 1.3rem); padding: 6px 9px; }
+
+/* Nút đi trái phải khi kéo vàng */
+.claw-cv { height: clamp(330px, calc(100dvh - 205px), 600px); }
+.move-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.move-btn { font: inherit; font-weight: 800; font-size: 1.25rem; padding: 12px 0; border: 0; border-radius: 14px; color: #2a1a00; background: linear-gradient(180deg, var(--gold2), var(--gold)); box-shadow: 0 4px 0 #a87600; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.move-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #a87600; }
+.move-row + p { margin: 6px 0 0; }
